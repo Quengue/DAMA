@@ -1,4 +1,3 @@
-# DDAMA-Intelligence
 # DAMA Intelligence
 
 ## Sobre o projeto
