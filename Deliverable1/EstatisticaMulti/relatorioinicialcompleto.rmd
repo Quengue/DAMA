@@ -1,0 +1,238 @@
+---
+title: "Deliverable 1 — Estatística Multivariada"
+author: "Ricardo_MADA"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(ggplot2)
+library(tidyr)
+library(knitr)
+library(tidyverse)
+#SUBSTITUIR DIRETORIO
+setwd("C:/Users/ricardo.matteo/Downloads/codes/R/MADA")
+library(readxl)
+options(scipen = 99)
+list.files()
+file.exists("employees.csv")
+knitr::opts_knit$set(root.dir = "C:/Users/ricardo.matteo/Downloads/codes/R/MADA")
+```
+
+# 1. Base de Dados e Legendas das Variáveis
+
+O projeto utiliza quatro bases de dados originadas dos sistemas corporativos, cada uma com uma finalidade específica:
+
+employees.csv (Base de Colaboradores): Contém os dados demográficos e hierárquicos. Variáveis: `employee_id` (Chave identificadora), `seniority` (Nível hierárquico), `department_id` (Setor). training_records.csv (Base de Treinamentos): Histórico de capacitação em Inteligência Artificial. Variáveis: `completion_status` (Status do curso, onde "Concluido" indica sucesso). ai_usage_logs.csv (Base de Consumo): Registros transacionais de uso das ferramentas de IA. Variáveis: `input_tokens` (Volume de texto enviado), `output_tokens` (Volume de texto recebido), `request_count` (Número de interações). security_events.csv (Base de Segurança): Log de incidentes e violações de diretrizes. Variáveis: `event_id` (Identificador do incidente).
+
+# 2. Relação Entre as Bases
+
+As bases seguem uma lógica de modelagem dimensional. O arquivo `employees` atua como a Dimensão principal (Dim_Colaborador), enquanto as outras três bases funcionam como tabelas Fato transacionais.
+
+O relacionamento entre todas elas é feito através da chave primária/estrangeira `employee_id` em um modelo Star Schema. Para a análise estatística, as tabelas Fato são agregadas e unidas à Dimensão via cruzamento direto (`merge`), formando uma única Tabela Analítica (ABT).
+```{r importacao_etl3, include=FALSE}
+list.files()
+file.exists("employees.csv")
+```
+# 3. Preparação dos Dados (ETL) e Tratamento de Valores Ausentes
+
+Nesta etapa, os dados transacionais são agrupados por colaborador e unidos à base principal utilizando funções nativas do R para estruturar o código passo a passo.
+
+```{r importacao_etl, echo=FALSE}
+employees        <- read.csv("employees.csv")
+training_records <- read.csv("training_records.csv")
+ai_usage_logs    <- read.csv("ai_usage_logs.csv")
+security_events  <- read.csv("security_events.csv")
+
+# Treinamentos
+treinos_concluidos <- subset(training_records, completion_status == "Concluido")
+treinamentos_agg <- aggregate(completion_status ~ employee_id, data = treinos_concluidos, FUN = length)
+colnames(treinamentos_agg)[2] <- "cursos_concluidos"
+
+# Uso IA
+ai_usage_logs$soma_tokens <- ai_usage_logs$input_tokens + ai_usage_logs$output_tokens
+uso_tokens <- aggregate(soma_tokens ~ employee_id, data = ai_usage_logs, FUN = sum, na.rm = TRUE)
+colnames(uso_tokens)[2] <- "total_tokens"
+
+uso_reqs <- aggregate(request_count ~ employee_id, data = ai_usage_logs, FUN = length)
+colnames(uso_reqs)[2] <- "total_requests"
+
+uso_agg <- merge(uso_tokens, uso_reqs, by = "employee_id")
+
+# Segurança
+seg_agg <- aggregate(event_id ~ employee_id, data = security_events, FUN = length)
+colnames(seg_agg)[2] <- "incidentes_seguranca"
+
+# 3. Junção das Bases tipo um left join
+df_bruto <- merge(employees, treinamentos_agg, by = "employee_id", all.x = TRUE)
+df_bruto <- merge(df_bruto, uso_agg, by = "employee_id", all.x = TRUE)
+df_bruto <- merge(df_bruto, seg_agg, by = "employee_id", all.x = TRUE)
+```
+
+### Identificação e Tratamento de Nulos
+
+Ao cruzar as bases, colaboradores que não fizeram cursos ou não tiveram incidentes recebem o valor vazio
+
+```{r nulos_antes, echo=FALSE}
+# Mostrando os dados nulos gerados pela junção
+nulos_identificados <- colSums(is.na(df_bruto))
+
+tabela_nulos <- data.frame(
+  Variavel = names(nulos_identificados), 
+  Nulos = nulos_identificados
+)
+kable(tabela_nulos, caption = "Contagem de Valores Nulos (Antes do Tratamento)")
+```
+
+Para a modelagem, esses nulos são convertidos estatisticamente para zero.
+
+```{r tratamento_nulos, echo=FALSE}
+df_dados <- df_bruto
+
+df_dados$cursos_concluidos[is.na(df_dados$cursos_concluidos)] <- 0
+df_dados$total_tokens[is.na(df_dados$total_tokens)]           <- 0
+df_dados$total_requests[is.na(df_dados$total_requests)]       <- 0
+df_dados$incidentes_seguranca[is.na(df_dados$incidentes_seguranca)] <- 0
+
+# Exportação da Tabela
+write.csv(df_dados, "tabela_analitica_final.csv", row.names = FALSE)
+```
+
+# 4. Análise Exploratória e Indicadores Organizacionais
+
+## 4.1. Tabelas de Estatísticas Descritivas
+
+```{r descritivas, echo=FALSE}
+estatisticas <- data.frame(
+  Indicador = c("Cursos Concluídos", "Total Tokens", "Total Requests", "Incidentes"),
+  Min      = c(min(df_dados$cursos_concluidos), min(df_dados$total_tokens), min(df_dados$total_requests), min(df_dados$incidentes_seguranca)),
+  
+  Media    = c(mean(df_dados$cursos_concluidos), mean(df_dados$total_tokens), mean(df_dados$total_requests), mean(df_dados$incidentes_seguranca)),
+  
+  Max      = c(max(df_dados$cursos_concluidos), max(df_dados$total_tokens), max(df_dados$total_requests), max(df_dados$incidentes_seguranca)),
+  
+  DP       = c(sd(df_dados$cursos_concluidos), sd(df_dados$total_tokens), sd(df_dados$total_requests), sd(df_dados$incidentes_seguranca))
+)
+
+# Arredondamento das casas decimais
+estatisticas$Media <- round(estatisticas$Media, 2)
+estatisticas$DP    <- round(estatisticas$DP, 2)
+
+kable(estatisticas, caption = "Estatísticas Descritivas dos Indicadores Organizacionais")
+```
+
+## 4.2. Distribuição do Consumo de Tokens
+
+```{r histograma, echo=FALSE}
+df_grafico <- subset(df_dados, total_tokens > 0)
+
+ggplot(df_grafico, aes(x = total_tokens)) +
+  geom_histogram(fill = "royalblue3", color = "white", bins = 40) +
+  labs(
+    title = "Distribuição do Consumo de Tokens de IA",
+    x = "Quantidade de Tokens",
+    y = "Frequência (Colaboradores)"
+  )
+```
+
+## 4.3. Mapa de Correlação dos Indicadores
+
+Para investigar se o aumento em um indicador organizacional afeta o outro, utilizamos a matriz de correlação linear construída nativamente com o pacote ggplot2.
+
+```{r correlacao, echo=FALSE}
+# Variáveis quant
+dados_correl <- df_dados[, c("cursos_concluidos", "total_tokens", "total_requests", "incidentes_seguranca")]
+
+matriz_correl <- cor(dados_correl)
+
+# Formato longo ggplot2
+correl_df <- as.data.frame(matriz_correl)
+correl_df$Variavel_1 <- rownames(correl_df)
+
+correl_longa <- pivot_longer(
+  correl_df, 
+  cols = c("cursos_concluidos", "total_tokens", "total_requests", "incidentes_seguranca"), 
+  names_to = "Variavel_2", values_to = "Valor"
+)
+
+# 4. Construção do Heatmap de Correlação
+ggplot(correl_longa, aes(x = Variavel_1, y = Variavel_2, fill = Valor)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = round(Valor, 2)), color = "black", size = 4) +
+  scale_fill_gradient2(low = "darkred", mid = "white", high = "cyan3", midpoint = 0, limit = c(-1, 1), name = "Correlação"
+  ) +
+  theme(axis.text.x = element_text(angle = 15, hjust = 1), axis.title = element_blank(), panel.grid = element_blank()) +
+  labs(title = "Heatmap de Correlação Linear") +
+  coord_fixed()
+```
+
+## 4.4. Boxplots: Testando as Hipóteses de Treinamento
+
+A matriz de correlação sugere duas hipóteses de negócio a serem exploradas visualmente: (H1) colaboradores que concluíram treinamentos em IA consomem mais tokens e (H2) colaboradores treinados apresentam menos incidentes de segurança (efeito do treinamento pra proteção). Para investigar essas hipóteses, os colaboradores foram segmentados em dois grupos.
+
+```{r hipoteses_setup, echo=FALSE}
+df_dados$treinado <- ifelse(df_dados$cursos_concluidos > 0, "Com Treinamento", "Sem Treinamento")
+```
+
+```{r boxplot_tokens_treinamento, echo=FALSE}
+df_tokens_pos <- subset(df_dados, total_tokens > 0)
+
+ggplot(df_tokens_pos, aes(x = treinado, y = total_tokens, fill = treinado)) + geom_boxplot(outlier.alpha = 0.3) + scale_y_log10() + scale_fill_manual(values = c("Com Treinamento" = "cyan3", "Sem Treinamento" = "gray1")) +
+  labs(title = "H1: Colaboradores treinados consomem mais tokens de IA?", x = NULL, y = "Total de Tokens (escala log10, apenas colaboradores ativos no uso)"
+  )
+```
+
+```{r incidentes_treinamento, echo=FALSE, fig.width=10, fig.height=6}
+
+ggplot(df_dados, aes(x = treinado, y = incidentes_seguranca, color = treinado)) +
+  geom_jitter(width = 0.12, height = 0, size = 3, alpha = 0.6) +
+  stat_summary(fun = mean, geom = "point", shape = 18, size = 5, color = "black") + scale_color_manual(values = c("Com Treinamento" = "darkred","Sem Treinamento" = "orange2")) + labs(title = "H2: Treinamento em IA reduz incidentes de segurança?", x = NULL, y = "Incidentes de Segurança por Colaborador") + theme_minimal() + theme(legend.position = "none",plot.title = element_text(size = 14, face = "bold")
+        )
+
+```
+
+```{r stats_hipoteses, echo=FALSE}
+media_tokens_com  <- round(mean(df_tokens_pos$total_tokens[df_tokens_pos$treinado == "Com Treinamento"]), 0)
+
+media_tokens_sem  <- round(mean(df_tokens_pos$total_tokens[df_tokens_pos$treinado == "Sem Treinamento"]), 0)
+
+mediana_tokens_com <- round(median(df_dados$total_tokens[df_dados$treinado == "Com Treinamento"]), 0)
+
+mediana_tokens_sem <- round(median(df_dados$total_tokens[df_dados$treinado == "Sem Treinamento"]), 0)
+
+media_inc_com     <- round(mean(df_dados$incidentes_seguranca[df_dados$treinado == "Com Treinamento"]), 4)
+
+media_inc_sem     <- round(mean(df_dados$incidentes_seguranca[df_dados$treinado == "Sem Treinamento"]), 4)
+
+cor_cursos_tokens <- round(cor(df_dados$cursos_concluidos, df_dados$total_tokens), 2)
+
+cor_cursos_inc    <- round(cor(df_dados$cursos_concluidos, df_dados$incidentes_seguranca), 2)
+
+pct_com_incidente <- round(100 * sum(df_dados$incidentes_seguranca > 0) / nrow(df_dados), 1)
+
+# Export resumo das hipoteses
+resumo_hipoteses <- data.frame(
+  Hipotese     = c("H1: Treinamento aumenta uso de IA", "H2: Treinamento reduz incidentes"),
+  Correlacao   = c(cor_cursos_tokens, cor_cursos_inc),
+  Media_Com    = c(media_tokens_com, media_inc_com),
+  Media_Sem    = c(media_tokens_sem, media_inc_sem),
+  Resultado    = c("Confirmada (efeito fraco)", "Nao confirmada")
+)
+write.csv(resumo_hipoteses, "resumo_hipoteses.csv", row.names = FALSE)
+```
+
+# 5. Conclusão
+
+A preparação dos dados juntou de quatro bases transacionais e dimensionais para uma única matriz analítica granularizada por colaborador (N = `r nrow(df_dados)`), com tratamento adequado de nulos estruturais que preservou a integridade das `r nrow(df_dados)` observações.
+
+Os resultados permitem uma leitura mais precisa das duas hipóteses organizacionais levantadas:
+
+H1 — Treinamento aumenta o uso de IA: confirmada, com relação pequena. Colaboradores que concluíram ao menos um curso apresentam consumo médio de tokens de `r round(media_tokens_com, 2)` contra `r round(media_tokens_sem, 2)` entre os não treinados — mediana de `r round(mediana_tokens_com, 2)` versus `r round(mediana_tokens_sem, 2)` tokens. A correlação linear (r = `r round(cor_cursos_tokens, 2)`) é positiva, porém fraca, indicando que a capacitação está associada a maior engajamento com as ferramentas de IA, mas está longe de ser o único fator explicativo — reforçando que uma variável adicional (ex.: função do cargo ou ferramenta disponibilizada) provavelmente modera essa relação.
+
+H2 — Treinamento reduz incidentes de segurança: não confirmada pelos dados disponíveis. Os boxplots e as médias por grupo (`r media_inc_com` incidentes/colaborador entre treinados vs. `r media_inc_sem` entre não treinados) são praticamente indistinguíveis, e a correlação entre cursos concluídos e incidentes é essencialmente nula (r = `r cor_cursos_inc`). Isso é reforçado pela baixíssima incidência do evento na base: apenas `r pct_com_incidente`% dos colaboradores registraram algum incidente, tornando qualquer associação estatisticamente frágil com o volume atual de dados. Conclui-se que, com a granularidade e o período disponíveis, não há evidência de um efeito protetor direto do treinamento sobre a segurança — a hipótese de senso comum não se sustenta e não deve ser usada para justificar decisões de política de treinamento sem uma análise multivariada mais robusta (controlando por área, cargo e exposição às ferramentas de IA).
+
+Esse diagnóstico é o principal ganho desta etapa: em vez de apenas declarar que "os dados estão prontos", a análise já descarta uma hipótese de negócio (H2) e qualifica a força real de outra (H1), orientando os próximos passos — como regressão multivariada com variáveis de controle e uma janela temporal entre treinamento e incidente — em vez de correlações simples.
