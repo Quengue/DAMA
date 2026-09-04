@@ -1,0 +1,1 @@
+package br.edu.exemplo.ia.project.api; public record CreateProjectCommand(String name,String area){}

@@ -1,0 +1,1 @@
+package br.edu.exemplo.ia.usage.api; import java.util.UUID; public record RegisterUsageCommand(UUID projectId,long tokens,String model){}

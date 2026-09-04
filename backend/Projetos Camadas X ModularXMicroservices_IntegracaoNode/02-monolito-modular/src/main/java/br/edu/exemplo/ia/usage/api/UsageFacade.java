@@ -1,0 +1,1 @@
+package br.edu.exemplo.ia.usage.api; public interface UsageFacade { UsageView register(RegisterUsageCommand c); }

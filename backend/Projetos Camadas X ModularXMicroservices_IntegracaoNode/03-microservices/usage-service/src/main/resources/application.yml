@@ -1,0 +1,6 @@
+server.port: ${SERVER_PORT:8082}
+project-service.base-url: ${PROJECT_SERVICE_URL:http://localhost:8081}
+spring:
+  datasource: {url: ${DB_URL:jdbc:postgresql://localhost:5434/usages}, username: ${DB_USER:ia}, password: ${DB_PASSWORD:ia}}
+  jpa: {hibernate: {ddl-auto: update}, open-in-view: false}
+management.endpoints.web.exposure.include: health,info

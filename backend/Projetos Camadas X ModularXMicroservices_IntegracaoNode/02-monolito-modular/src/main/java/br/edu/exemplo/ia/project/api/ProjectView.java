@@ -1,0 +1,1 @@
+package br.edu.exemplo.ia.project.api; import java.util.UUID; public record ProjectView(UUID id,String name,String area){}

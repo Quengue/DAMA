@@ -1,0 +1,8 @@
+pipeline { agent any
+ stages {
+  stage('Test project-service'){steps{dir('project-service'){sh 'mvn -B clean verify'}}}
+  stage('Test usage-service'){steps{dir('usage-service'){sh 'mvn -B clean verify'}}}
+  stage('Images'){steps{sh 'docker compose build'}}
+ }
+ post{always{junit allowEmptyResults:true,testResults:'**/target/surefire-reports/*.xml'}}
+}

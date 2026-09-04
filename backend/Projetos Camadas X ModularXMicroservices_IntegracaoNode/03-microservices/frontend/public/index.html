@@ -1,0 +1,12 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Consumo de IA</title>
+<style>body{font-family:Arial;max-width:900px;margin:32px auto}input,button{padding:8px;margin:4px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:8px}</style></head>
+<body><h1>Gestão de Consumo de IA</h1><p>Front-end Node/Express didático.</p>
+<h2>Novo projeto</h2><input id="nome" placeholder="Nome"><input id="area" placeholder="Área"><button onclick="criarProjeto()">Criar</button>
+<h2>Registrar consumo</h2><input id="pid" placeholder="Project UUID"><input id="tokens" type="number" value="100"><input id="modelo" value="gpt-demo"><button onclick="consumir()">Registrar</button>
+<h2>Projetos</h2><button onclick="listar()">Atualizar</button><pre id="out"></pre>
+<script>
+const out=document.getElementById('out');
+async function criarProjeto(){let r=await fetch('/api/projects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:nome.value,area:area.value})});out.textContent=await r.text();}
+async function consumir(){let r=await fetch('/api/usages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({projectId:pid.value,tokens:Number(tokens.value),model:modelo.value})});out.textContent=await r.text();}
+async function listar(){let r=await fetch('/api/projects');out.textContent=JSON.stringify(await r.json(),null,2);}
+</script></body></html>

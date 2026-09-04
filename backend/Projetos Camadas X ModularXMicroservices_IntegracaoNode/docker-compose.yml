@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: iadb
+      POSTGRES_USER: ia
+      POSTGRES_PASSWORD: ia
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ia -d iadb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  alert-service:
+    build: ./alert-service
+    environment:
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: .
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/iadb
+      DB_USER: ia
+      DB_PASSWORD: ia
+      ALERT_SERVICE_URL: http://alert-service:3001
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      alert-service:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    environment:
+      API_BASE_URL: http://backend:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
