@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>AI Analytics</title>
+    <title>Consumo de IA</title>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         * {
@@ -13,15 +16,45 @@
             box-sizing: border-box;
         }
 
-        html {
-            scroll-behavior: smooth;
-            scroll-padding-top: 90px;
+        :root {
+            --bg: #070707;
+            --panel: #0d0d0d;
+            --panel-2: #111111;
+            --border: #252525;
+            --text: #f2f2f2;
+            --muted: #858585;
+            --accent: #ff3b00;
+            --accent-2: #ff6a00;
+            --danger: #ff1744;
+            --warning: #ff9800;
+            --success: #00e676;
         }
 
         body {
             font-family: Arial, Helvetica, sans-serif;
-            background: #f4f6f9;
-            color: #101828;
+            background:
+                radial-gradient(circle at 80% 10%, rgba(255, 59, 0, .12), transparent 25%),
+                radial-gradient(circle at 10% 90%, rgba(255, 106, 0, .07), transparent 25%),
+                var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            opacity: .035;
+            background-image:
+                linear-gradient(#fff 1px, transparent 1px),
+                linear-gradient(90deg, #fff 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        .layout {
+            display: flex;
+            min-height: 100vh;
         }
 
         /* =========================
@@ -29,342 +62,323 @@
         ========================= */
 
         .sidebar {
+            width: 250px;
+            min-height: 100vh;
+            background: #090909;
+            border-right: 1px solid var(--border);
+            padding: 28px 18px;
             position: fixed;
             left: 0;
             top: 0;
-            width: 250px;
-            height: 100vh;
-            background: #101827;
-            color: white;
-            padding: 32px 24px;
-            z-index: 1000;
+            bottom: 0;
+            z-index: 10;
         }
 
         .logo {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 52px;
+            padding: 8px 12px 35px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 25px;
         }
 
-        .logo-icon {
-            width: 55px;
-            height: 55px;
-            border-radius: 16px;
-            background: #2864e8;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .logo h1 {
             font-size: 25px;
-            font-weight: bold;
+            font-weight: 900;
+            letter-spacing: -1px;
+            text-transform: uppercase;
         }
 
-        .logo-text h1 {
-            font-size: 22px;
-            margin-bottom: 5px;
+        .logo h1 span {
+            color: var(--accent);
         }
 
-        .logo-text p {
-            color: #94a3b8;
-            font-size: 14px;
+        .logo small {
+            display: block;
+            margin-top: 7px;
+            color: var(--muted);
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
         }
 
-        .menu-title {
-            color: #718096;
-            font-size: 13px;
-            font-weight: bold;
-            margin: 0 0 12px 15px;
+        .menu {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
         }
 
         .menu-item {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            padding: 14px 20px;
-            margin-bottom: 8px;
-            border-radius: 12px;
-            color: #e2e8f0;
+            width: 100%;
+            border: 1px solid transparent;
+            background: transparent;
+            color: #999;
+            text-align: left;
+            padding: 14px 15px;
             cursor: pointer;
-            transition: all 0.2s ease;
-            user-select: none;
+            font-size: 13px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            transition: .2s;
         }
 
-        .menu-item:hover {
-            background: #1c2940;
+        .menu-item:hover,
+        .menu-item.active {
+            color: white;
+            background: rgba(255, 59, 0, .08);
+            border-color: rgba(255, 59, 0, .35);
         }
 
         .menu-item.active {
-            background: #2864e8;
-            color: white;
-        }
-
-        .menu-icon {
-            width: 18px;
-            text-align: center;
-            font-size: 15px;
-        }
-
-        .sidebar-bottom {
-            position: absolute;
-            bottom: 25px;
-            left: 24px;
-            right: 24px;
-            border-top: 1px solid #273449;
-            padding-top: 25px;
-        }
-
-        .online {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: #dce5f2;
-            font-size: 14px;
-        }
-
-        .online-dot {
-            width: 12px;
-            height: 12px;
-            background: #22c55e;
-            border-radius: 50%;
+            border-left: 3px solid var(--accent);
         }
 
         /* =========================
            CONTEÚDO
         ========================= */
 
-        .main {
+        .content {
+            width: calc(100% - 250px);
             margin-left: 250px;
-            min-height: 100vh;
+            padding: 35px;
         }
 
         .topbar {
-            height: 100px;
-            background: white;
-            border-bottom: 1px solid #e5e7eb;
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            padding: 0 44px;
-            position: sticky;
-            top: 0;
-            z-index: 500;
+            align-items: center;
+            margin-bottom: 35px;
         }
 
         .topbar h2 {
-            font-size: 28px;
-            margin-bottom: 5px;
+            font-size: 31px;
+            text-transform: uppercase;
+            font-weight: 900;
+            letter-spacing: -1px;
         }
 
         .topbar p {
-            color: #64748b;
-            font-size: 17px;
+            color: var(--muted);
+            font-size: 13px;
+            margin-top: 6px;
         }
 
         .status {
-            border: 1px solid #dbeafe;
-            background: #eff6ff;
-            color: #155eef;
-            padding: 11px 20px;
-            border-radius: 25px;
-            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            border: 1px solid #242424;
+            padding: 10px 15px;
+            background: #0d0d0d;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
-        .status span {
-            margin-right: 7px;
-        }
-
-        .content {
-            padding: 38px 44px 50px;
-        }
-
-        .section-title {
-            margin-bottom: 32px;
-        }
-
-        .section-title h2 {
-            font-size: 32px;
-            margin-bottom: 8px;
-        }
-
-        .section-title p {
-            color: #64748b;
-            font-size: 18px;
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            box-shadow: 0 0 12px var(--success);
         }
 
         /* =========================
            CARDS
         ========================= */
 
-        .stats {
+        .cards {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 24px;
-            margin-bottom: 34px;
+            gap: 15px;
+            margin-bottom: 30px;
         }
 
-        .stat-card {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 17px;
-            padding: 28px;
-            min-height: 195px;
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+        .card {
+            background:
+                linear-gradient(145deg, rgba(255,255,255,.025), transparent),
+                var(--panel);
+            border: 1px solid var(--border);
+            padding: 22px;
+            position: relative;
+            overflow: hidden;
         }
 
-        .stat-top {
+        .card::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--accent);
+            opacity: .7;
+        }
+
+        .card-label {
+            color: var(--muted);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        .card-value {
+            margin-top: 12px;
+            font-size: 30px;
+            font-weight: 900;
+        }
+
+        /* =========================
+           DASHBOARD EXTRA
+        ========================= */
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .chart-panel,
+        .info-panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            padding: 25px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 15px;
+        }
+
+        .mini-stats {
+            display: grid;
+            gap: 12px;
+        }
+
+        .mini-stat {
+            background: #090909;
+            border: 1px solid #202020;
+            padding: 18px;
+        }
+
+        .mini-stat span {
+            display: block;
+            color: var(--muted);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .mini-stat strong {
+            font-size: 22px;
+        }
+
+        /* =========================
+           SEÇÕES
+        ========================= */
+
+        .section {
+            margin-bottom: 30px;
+            scroll-margin-top: 25px;
+        }
+
+        .section-title {
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            margin-bottom: 18px;
-        }
-
-        .stat-title {
-            color: #59708d;
-            font-size: 18px;
-            font-weight: bold;
-        }
-
-        .stat-icon {
-            width: 47px;
-            height: 47px;
-            border-radius: 13px;
-            background: #eff6ff;
-            color: #2864e8;
-            display: flex;
             align-items: center;
-            justify-content: center;
-            font-size: 20px;
+            margin-bottom: 15px;
         }
 
-        .stat-number {
-            font-size: 40px;
-            font-weight: bold;
-            margin-bottom: 10px;
+        .section-title h3 {
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: .5px;
         }
 
-        .stat-description {
-            color: #8b9bb2;
-            font-size: 15px;
+        .section-title span {
+            color: var(--accent);
+            font-size: 10px;
+            letter-spacing: 1.5px;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            padding: 25px;
         }
 
         /* =========================
            FORMULÁRIOS
         ========================= */
 
-        .forms {
+        .form-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 26px;
-            margin-bottom: 30px;
-        }
-
-        .card {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 17px;
-            padding: 32px;
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
-            scroll-margin-top: 110px;
-        }
-
-        .card h2 {
-            font-size: 25px;
-            margin-bottom: 7px;
-        }
-
-        .card-description {
-            color: #8b9bb2;
-            font-size: 15px;
-            margin-bottom: 28px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
         }
 
         .form-group {
-            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
         }
 
-        .form-group label {
-            display: block;
+        .form-group.full {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            color: #aaa;
+            font-size: 10px;
             font-weight: bold;
-            margin-bottom: 9px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
-        .form-group input,
-        .form-group select {
+        input,
+        select {
             width: 100%;
-            padding: 15px 16px;
-            border: 1px solid #d5dce5;
-            border-radius: 11px;
-            font-size: 16px;
-            outline: none;
-            background: white;
-            transition: border 0.2s;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus {
-            border-color: #2864e8;
-            box-shadow: 0 0 0 3px rgba(40, 100, 232, 0.10);
-        }
-
-        .button {
-            width: 100%;
-            border: none;
-            background: #2864e8;
+            padding: 13px 14px;
+            background: #080808;
+            border: 1px solid #292929;
             color: white;
-            padding: 15px;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: bold;
+            outline: none;
+            font-size: 13px;
+            transition: .2s;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 1px rgba(255,59,0,.15);
+        }
+
+        button.action {
+            margin-top: 8px;
+            padding: 14px 20px;
+            background: var(--accent);
+            color: white;
+            border: none;
             cursor: pointer;
-            transition: 0.2s;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: .2s;
         }
 
-        .button:hover {
-            background: #1d4ed8;
+        button.action:hover {
+            background: var(--accent-2);
             transform: translateY(-1px);
-        }
-
-        .button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
+            box-shadow: 0 7px 25px rgba(255,59,0,.2);
         }
 
         /* =========================
-           MENSAGENS
+           TABELA
         ========================= */
 
-        .message {
-            margin-top: 15px;
-            padding: 12px 14px;
-            border-radius: 9px;
-            font-size: 14px;
-            display: none;
-        }
-
-        .message.success {
-            display: block;
-            background: #ecfdf3;
-            color: #027a48;
-            border: 1px solid #abefc6;
-        }
-
-        .message.error {
-            display: block;
-            background: #fef3f2;
-            color: #b42318;
-            border: 1px solid #fecdca;
-        }
-
-        /* =========================
-           PROJETOS
-        ========================= */
-
-        .projects-card {
-            margin-bottom: 30px;
-        }
-
-        .table-container {
+        .table-wrapper {
             overflow-x: auto;
         }
 
@@ -375,76 +389,112 @@
 
         th {
             text-align: left;
-            padding: 15px;
-            background: #f8fafc;
-            color: #475467;
-            font-size: 14px;
-            border-bottom: 1px solid #e5e7eb;
+            color: #777;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 14px;
+            border-bottom: 1px solid #292929;
         }
 
         td {
-            padding: 15px;
-            border-bottom: 1px solid #eef2f6;
-            color: #344054;
-            font-size: 14px;
+            padding: 15px 14px;
+            border-bottom: 1px solid #1c1c1c;
+            color: #ddd;
+            font-size: 13px;
         }
 
-        .empty {
-            text-align: center;
-            color: #98a2b3;
-            padding: 30px;
+        tr:hover td {
+            background: rgba(255,255,255,.015);
         }
 
         /* =========================
-           ALERTAS
+           ALERTA
         ========================= */
 
         .alert-box {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 17px;
-            padding: 30px;
-            margin-bottom: 30px;
-            scroll-margin-top: 110px;
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+            border: 1px solid #292929;
+            background: #090909;
+            padding: 20px;
+            margin-top: 18px;
+            display: none;
         }
 
-        .alert-box h2 {
-            font-size: 25px;
-            margin-bottom: 20px;
+        .alert-box.show {
+            display: block;
         }
 
-        .alert-content {
-            padding: 18px;
-            border-radius: 11px;
-            background: #f8fafc;
-            color: #667085;
+        .alert-title {
+            color: var(--accent);
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
         }
 
-        .alert-content.info {
-            background: #eff6ff;
-            color: #175cd3;
-        }
-
-        .alert-content.warning {
-            background: #fffaeb;
-            color: #b54708;
-        }
-
-        .alert-content.critical {
-            background: #fef3f2;
-            color: #b42318;
+        .alert-message {
+            color: #ddd;
+            font-size: 13px;
         }
 
         /* =========================
-           RODAPÉ
+           OUTPUT
         ========================= */
 
-        footer {
+        #out {
+            margin-top: 18px;
+            background: #050505;
+            border: 1px solid #222;
+            padding: 18px;
+            color: #aaa;
+            font-family: Consolas, monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            min-height: 50px;
+        }
+
+        .empty {
+            padding: 25px;
             text-align: center;
-            color: #98a2b3;
-            padding: 20px;
-            font-size: 13px;
+            color: #666;
+            font-size: 12px;
+        }
+
+        /* =========================
+           COMO FUNCIONA
+        ========================= */
+
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        .step {
+            border: 1px solid var(--border);
+            padding: 22px;
+            background: #0b0b0b;
+        }
+
+        .step-number {
+            color: var(--accent);
+            font-size: 24px;
+            font-weight: 900;
+            margin-bottom: 15px;
+        }
+
+        .step h4 {
+            font-size: 14px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .step p {
+            color: #777;
+            line-height: 1.6;
+            font-size: 12px;
         }
 
         /* =========================
@@ -452,45 +502,56 @@
         ========================= */
 
         @media (max-width: 1100px) {
-            .stats {
+
+            .cards {
                 grid-template-columns: repeat(2, 1fr);
             }
 
-            .forms {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .steps {
                 grid-template-columns: 1fr;
             }
         }
 
         @media (max-width: 750px) {
+
             .sidebar {
                 position: relative;
                 width: 100%;
-                height: auto;
+                min-height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
             }
 
-            .sidebar-bottom {
-                position: relative;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                margin-top: 25px;
-            }
-
-            .main {
-                margin-left: 0;
-            }
-
-            .topbar {
-                padding: 20px;
-                height: auto;
+            .layout {
+                display: block;
             }
 
             .content {
-                padding: 25px 20px;
+                width: 100%;
+                margin-left: 0;
+                padding: 20px;
             }
 
-            .stats {
+            .form-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .form-group.full {
+                grid-column: auto;
+            }
+
+            .cards {
+                grid-template-columns: 1fr;
+            }
+
+            .topbar {
+                align-items: flex-start;
+                gap: 20px;
+                flex-direction: column;
             }
         }
     </style>
@@ -498,151 +559,247 @@
 
 <body>
 
-<!-- =========================
-     SIDEBAR
-========================= -->
+<div class="layout">
 
-<aside class="sidebar">
+    <!-- =========================
+         SIDEBAR
+    ========================= -->
 
-    <div class="logo">
-        <div class="logo-icon">AI</div>
+    <aside class="sidebar">
 
-        <div class="logo-text">
-            <h1>AI Analytics</h1>
-            <p>Intelligence Platform</p>
-        </div>
-    </div>
+        <div class="logo">
+            <h1>AI <span>Analytics</span></h1>
 
-    <div class="menu-title">MENU</div>
-
-    <div class="menu-item active" data-target="dashboard">
-        <div class="menu-icon">▦</div>
-        <span>Dashboard</span>
-    </div>
-
-    <div class="menu-item" data-target="projetos">
-        <div class="menu-icon">▣</div>
-        <span>Projetos</span>
-    </div>
-
-    <div class="menu-item" data-target="utilizacao">
-        <div class="menu-icon">◉</div>
-        <span>Utilização de IA</span>
-    </div>
-
-    <div class="menu-item" data-target="alertas">
-        <div class="menu-icon">!</div>
-        <span>Alertas</span>
-    </div>
-
-    <div class="sidebar-bottom">
-        <div class="online">
-            <div class="online-dot"></div>
-            <span>Sistema online</span>
-        </div>
-    </div>
-
-</aside>
-
-
-<!-- =========================
-     CONTEÚDO PRINCIPAL
-========================= -->
-
-<div class="main">
-
-    <header class="topbar">
-
-        <div>
-            <h2>Dashboard</h2>
-            <p>Monitoramento de utilização de Inteligência Artificial</p>
+            <small>
+                Monitoramento de Inteligência Artificial
+            </small>
         </div>
 
-        <div class="status">
-            <span>●</span>
-            Sistema conectado
-        </div>
+        <nav class="menu">
 
-    </header>
+            <button class="menu-item active" data-target="painel">
+                Painel
+            </button>
 
+            <button class="menu-item" data-target="projetos">
+                Projetos
+            </button>
+
+            <button class="menu-item" data-target="consumo">
+                Registrar consumo
+            </button>
+
+            <button class="menu-item" data-target="como-funciona">
+                Como funciona
+            </button>
+
+        </nav>
+
+    </aside>
+
+
+    <!-- =========================
+         CONTEÚDO
+    ========================= -->
 
     <main class="content">
 
-        <!-- DASHBOARD -->
 
-        <section id="dashboard">
+        <!-- =========================
+             PAINEL
+        ========================= -->
 
-            <div class="section-title">
-                <h2>Visão geral</h2>
-                <p>Acompanhe os principais indicadores da utilização de Inteligência Artificial.</p>
+        <section id="painel" class="section">
+
+            <div class="topbar">
+
+                <div>
+
+                    <h2>Painel</h2>
+
+                    <p>
+                        Monitoramento do consumo e utilização
+                        de Inteligência Artificial.
+                    </p>
+
+                </div>
+
+                <div class="status">
+
+                    <span class="status-dot"></span>
+
+                    Sistema operacional
+
+                </div>
+
             </div>
 
 
-            <div class="stats">
+            <!-- CARDS -->
 
-                <div class="stat-card">
+            <div class="cards">
 
-                    <div class="stat-top">
-                        <div class="stat-title">Funcionários</div>
+                <div class="card">
 
-                        <div class="stat-icon">👥</div>
+                    <div class="card-label">
+                        Funcionários
                     </div>
 
-                    <div class="stat-number" id="employees">2.356</div>
-
-                    <div class="stat-description">
-                        Funcionários analisados
-                    </div>
-
-                </div>
-
-
-                <div class="stat-card">
-
-                    <div class="stat-top">
-                        <div class="stat-title">Empresas</div>
-
-                        <div class="stat-icon">▦</div>
-                    </div>
-
-                    <div class="stat-number" id="companies">18</div>
-
-                    <div class="stat-description">
-                        Empresas presentes na base
+                    <div
+                        class="card-value"
+                        id="totalFuncionarios"
+                    >
+                        0
                     </div>
 
                 </div>
 
 
-                <div class="stat-card">
+                <div class="card">
 
-                    <div class="stat-top">
-                        <div class="stat-title">Departamentos</div>
-
-                        <div class="stat-icon">▦</div>
+                    <div class="card-label">
+                        Empresas
                     </div>
 
-                    <div class="stat-number" id="departments">161</div>
-
-                    <div class="stat-description">
-                        Departamentos analisados
+                    <div
+                        class="card-value"
+                        id="totalEmpresas"
+                    >
+                        0
                     </div>
 
                 </div>
 
 
-                <div class="stat-card">
+                <div class="card">
 
-                    <div class="stat-top">
-                        <div class="stat-title">Registros de IA</div>
-
-                        <div class="stat-icon">✦</div>
+                    <div class="card-label">
+                        Departamentos
                     </div>
 
-                    <div class="stat-number" id="aiUsage">269.515</div>
+                    <div
+                        class="card-value"
+                        id="totalDepartamentos"
+                    >
+                        0
+                    </div>
 
-                    <div class="stat-description">
-                        Registros de utilização de IA
+                </div>
+
+
+                <div class="card">
+
+                    <div class="card-label">
+                        Registros de IA
+                    </div>
+
+                    <div
+                        class="card-value"
+                        id="totalIA"
+                    >
+                        0
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- DASHBOARD -->
+
+            <div class="dashboard-grid">
+
+                <div class="chart-panel">
+
+                    <div class="section-title">
+
+                        <h3>
+                            Visão geral dos dados
+                        </h3>
+
+                        <span>
+                            DATA ANALYTICS
+                        </span>
+
+                    </div>
+
+                    <div class="chart-container">
+
+                        <canvas id="dashboardChart"></canvas>
+
+                    </div>
+
+                </div>
+
+
+                <div class="info-panel">
+
+                    <div class="section-title">
+
+                        <h3>
+                            Indicadores
+                        </h3>
+
+                        <span>
+                            STATUS
+                        </span>
+
+                    </div>
+
+
+                    <div class="mini-stats">
+
+                        <div class="mini-stat">
+
+                            <span>
+                                Projetos cadastrados
+                            </span>
+
+                            <strong id="indicadorProjetos">
+                                0
+                            </strong>
+
+                        </div>
+
+
+                        <div class="mini-stat">
+
+                            <span>
+                                Consumo registrado
+                            </span>
+
+                            <strong id="indicadorConsumo">
+                                0
+                            </strong>
+
+                        </div>
+
+
+                        <div class="mini-stat">
+
+                            <span>
+                                Total de tokens
+                            </span>
+
+                            <strong id="indicadorTokens">
+                                0
+                            </strong>
+
+                        </div>
+
+
+                        <div class="mini-stat">
+
+                            <span>
+                                Último alerta
+                            </span>
+
+                            <strong id="indicadorAlerta">
+                                Nenhum
+                            </strong>
+
+                        </div>
+
                     </div>
 
                 </div>
@@ -652,34 +809,39 @@
         </section>
 
 
-        <!-- FORMULÁRIOS -->
+        <!-- =========================
+             PROJETOS
+        ========================= -->
 
-        <div class="forms">
+        <section id="projetos" class="section">
 
-            <!-- PROJETOS -->
+            <div class="section-title">
 
-            <section class="card" id="projetos">
+                <h3>
+                    Projetos
+                </h3>
 
-                <h2>Novo projeto</h2>
+                <span>
+                    GERENCIAMENTO
+                </span>
 
-                <p class="card-description">
-                    Cadastre um novo projeto para monitoramento.
-                </p>
+            </div>
 
 
-                <form id="projectForm">
+            <div class="panel">
+
+                <div class="form-grid">
 
                     <div class="form-group">
 
-                        <label for="projectName">
-                            Nome do projeto
+                        <label for="nome">
+                            Nome
                         </label>
 
                         <input
+                            id="nome"
                             type="text"
-                            id="projectName"
-                            placeholder="Ex.: Projeto IA Marketing"
-                            required
+                            placeholder="Nome do projeto"
                         >
 
                     </div>
@@ -687,63 +849,136 @@
 
                     <div class="form-group">
 
-                        <label for="projectArea">
+                        <label for="area">
                             Área
                         </label>
 
                         <input
+                            id="area"
                             type="text"
-                            id="projectArea"
-                            placeholder="Ex.: Marketing"
-                            required
+                            placeholder="Área do projeto"
                         >
 
                     </div>
 
-
-                    <button
-                        type="submit"
-                        class="button"
-                        id="projectButton"
-                    >
-                        Criar projeto
-                    </button>
-
-                </form>
+                </div>
 
 
-                <div
-                    id="projectMessage"
-                    class="message"
-                ></div>
+                <button
+                    class="action"
+                    onclick="criarProjeto()"
+                >
+                    Criar projeto
+                </button>
 
-            </section>
+            </div>
 
-
-            <!-- UTILIZAÇÃO -->
-
-            <section class="card" id="utilizacao">
-
-                <h2>Registrar consumo</h2>
-
-                <p class="card-description">
-                    Registre a utilização de tokens de um projeto.
-                </p>
+        </section>
 
 
-                <form id="usageForm">
+        <!-- =========================
+             LISTA DE PROJETOS
+        ========================= -->
 
-                    <div class="form-group">
+        <section class="section">
 
-                        <label for="usageProjectId">
-                            Project UUID
+            <div class="section-title">
+
+                <h3>
+                    Projetos cadastrados
+                </h3>
+
+                <span>
+                    DATABASE
+                </span>
+
+            </div>
+
+
+            <div class="panel">
+
+                <div class="table-wrapper">
+
+                    <table>
+
+                        <thead>
+
+                            <tr>
+
+                                <th>
+                                    ID
+                                </th>
+
+                                <th>
+                                    Nome
+                                </th>
+
+                                <th>
+                                    Área
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody id="listaProjetos">
+
+                            <tr>
+
+                                <td
+                                    colspan="3"
+                                    class="empty"
+                                >
+                                    Nenhum projeto carregado.
+                                </td>
+
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =========================
+             CONSUMO
+        ========================= -->
+
+        <section id="consumo" class="section">
+
+            <div class="section-title">
+
+                <h3>
+                    Registrar consumo
+                </h3>
+
+                <span>
+                    IA USAGE
+                </span>
+
+            </div>
+
+
+            <div class="panel">
+
+                <div class="form-grid">
+
+                    <div class="form-group full">
+
+                        <label for="pid">
+                            Project ID
                         </label>
 
                         <input
+                            id="pid"
                             type="text"
-                            id="usageProjectId"
                             placeholder="UUID do projeto"
-                            required
                         >
 
                     </div>
@@ -751,16 +986,15 @@
 
                     <div class="form-group">
 
-                        <label for="usageTokens">
-                            Tokens utilizados
+                        <label for="tokens">
+                            Tokens
                         </label>
 
                         <input
+                            id="tokens"
                             type="number"
-                            id="usageTokens"
-                            placeholder="Ex.: 1000"
-                            min="1"
-                            required
+                            min="0"
+                            placeholder="Quantidade de tokens"
                         >
 
                     </div>
@@ -768,108 +1002,131 @@
 
                     <div class="form-group">
 
-                        <label for="usageModel">
+                        <label for="modelo">
                             Modelo
                         </label>
 
                         <input
+                            id="modelo"
                             type="text"
-                            id="usageModel"
-                            placeholder="Ex.: GPT-4"
-                            required
+                            placeholder="Ex: gpt-4"
                         >
 
                     </div>
 
+                </div>
 
-                    <button
-                        type="submit"
-                        class="button"
-                        id="usageButton"
-                    >
-                        Registrar consumo
-                    </button>
 
-                </form>
+                <button
+                    class="action"
+                    onclick="consumir()"
+                >
+                    Registrar consumo
+                </button>
 
 
                 <div
-                    id="usageMessage"
-                    class="message"
-                ></div>
+                    id="alerta"
+                    class="alert-box"
+                >
 
-            </section>
+                    <div class="alert-title">
+                        Alerta
+                    </div>
 
-        </div>
+                    <div class="alert-message">
+                    </div>
 
-
-        <!-- LISTA DE PROJETOS -->
-
-        <section class="card projects-card">
-
-            <h2>Projetos cadastrados</h2>
-
-            <p class="card-description">
-                Projetos registrados no sistema.
-            </p>
+                </div>
 
 
-            <div class="table-container">
-
-                <table>
-
-                    <thead>
-
-                        <tr>
-                            <th>ID</th>
-                            <th>Nome</th>
-                            <th>Área</th>
-                        </tr>
-
-                    </thead>
-
-                    <tbody id="projectsTable">
-
-                        <tr>
-                            <td
-                                colspan="3"
-                                class="empty"
-                            >
-                                Carregando projetos...
-                            </td>
-                        </tr>
-
-                    </tbody>
-
-                </table>
+                <div id="out"></div>
 
             </div>
 
         </section>
 
 
-        <!-- ALERTAS -->
+        <!-- =========================
+             COMO FUNCIONA
+        ========================= -->
 
         <section
-            class="alert-box"
-            id="alertas"
+            id="como-funciona"
+            class="section"
         >
 
-            <h2>Alertas</h2>
+            <div class="section-title">
 
-            <div
-                class="alert-content"
-                id="alertBox"
-            >
-                Nenhum alerta registrado.
+                <h3>
+                    Como funciona
+                </h3>
+
+                <span>
+                    ARQUITETURA
+                </span>
+
+            </div>
+
+
+            <div class="steps">
+
+                <div class="step">
+
+                    <div class="step-number">
+                        01
+                    </div>
+
+                    <h4>
+                        Frontend
+                    </h4>
+
+                    <p>
+                        Interface responsável pela interação
+                        com o usuário e registro das informações.
+                    </p>
+
+                </div>
+
+
+                <div class="step">
+
+                    <div class="step-number">
+                        02
+                    </div>
+
+                    <h4>
+                        Backend
+                    </h4>
+
+                    <p>
+                        A aplicação Java recebe as requisições,
+                        aplica as regras de negócio e processa os dados.
+                    </p>
+
+                </div>
+
+
+                <div class="step">
+
+                    <div class="step-number">
+                        03
+                    </div>
+
+                    <h4>
+                        Banco de dados
+                    </h4>
+
+                    <p>
+                        Os dados dos projetos e registros de
+                        utilização são persistidos no PostgreSQL.
+                    </p>
+
+                </div>
+
             </div>
 
         </section>
-
-
-        <footer>
-            AI Analytics — Plataforma de monitoramento de Inteligência Artificial
-        </footer>
 
     </main>
 
@@ -878,491 +1135,50 @@
 
 <script>
 
-    /* =====================================================
-       DASHBOARD
-    ===================================================== */
+    /* =========================
+       VARIÁVEIS
+    ========================= */
 
-    async function carregarDashboard() {
+    let projetos = [];
 
-        try {
+    let usos = [];
 
-            const resposta = await fetch("/api/dashboard");
+    let dashboardChart = null;
 
-            if (!resposta.ok) {
-                throw new Error("Erro ao carregar dashboard");
-            }
 
-            const dados = await resposta.json();
-
-            document.getElementById("employees").textContent =
-                Number(dados.employees).toLocaleString("pt-BR");
-
-            document.getElementById("companies").textContent =
-                Number(dados.companies).toLocaleString("pt-BR");
-
-            document.getElementById("departments").textContent =
-                Number(dados.departments).toLocaleString("pt-BR");
-
-            document.getElementById("aiUsage").textContent =
-                Number(dados.aiUsage).toLocaleString("pt-BR");
-
-        } catch (erro) {
-
-            console.error(erro);
-
-            document.getElementById("employees").textContent = "-";
-            document.getElementById("companies").textContent = "-";
-            document.getElementById("departments").textContent = "-";
-            document.getElementById("aiUsage").textContent = "-";
-
-        }
-
-    }
-
-
-    /* =====================================================
-       MENSAGENS
-    ===================================================== */
-
-    function mostrarMensagem(elementId, texto, tipo) {
-
-        const elemento = document.getElementById(elementId);
-
-        elemento.textContent = texto;
-
-        elemento.className = "message " + tipo;
-
-    }
-
-
-    /* =====================================================
-       CRIAR PROJETO
-    ===================================================== */
-
-    document
-        .getElementById("projectForm")
-        .addEventListener("submit", async function(event) {
-
-            event.preventDefault();
-
-            const button =
-                document.getElementById("projectButton");
-
-            const name =
-                document.getElementById("projectName").value.trim();
-
-            const area =
-                document.getElementById("projectArea").value.trim();
-
-
-            if (!name || !area) {
-
-                mostrarMensagem(
-                    "projectMessage",
-                    "Preencha todos os campos.",
-                    "error"
-                );
-
-                return;
-            }
-
-
-            button.disabled = true;
-            button.textContent = "Criando...";
-
-
-            try {
-
-                const resposta = await fetch("/api/projects", {
-
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-
-                    body: JSON.stringify({
-                        name: name,
-                        area: area
-                    })
-
-                });
-
-
-                if (!resposta.ok) {
-
-                    const texto = await resposta.text();
-
-                    throw new Error(
-                        texto || "Não foi possível criar o projeto."
-                    );
-
-                }
-
-
-                const resultado = await resposta.json();
-
-
-                mostrarMensagem(
-                    "projectMessage",
-                    "Projeto criado com sucesso! UUID: " + resultado.id,
-                    "success"
-                );
-
-
-                document
-                    .getElementById("projectForm")
-                    .reset();
-
-
-                await carregarProjetos();
-
-
-            } catch (erro) {
-
-                console.error(erro);
-
-                mostrarMensagem(
-                    "projectMessage",
-                    "Erro ao criar projeto: " + erro.message,
-                    "error"
-                );
-
-            } finally {
-
-                button.disabled = false;
-                button.textContent = "Criar projeto";
-
-            }
-
-        });
-
-
-    /* =====================================================
-       REGISTRAR UTILIZAÇÃO
-    ===================================================== */
-
-    document
-        .getElementById("usageForm")
-        .addEventListener("submit", async function(event) {
-
-            event.preventDefault();
-
-            const button =
-                document.getElementById("usageButton");
-
-
-            const projectId =
-                document
-                    .getElementById("usageProjectId")
-                    .value.trim();
-
-
-            const tokens =
-                Number(
-                    document
-                        .getElementById("usageTokens")
-                        .value
-                );
-
-
-            const model =
-                document
-                    .getElementById("usageModel")
-                    .value.trim();
-
-
-            if (!projectId || !tokens || !model) {
-
-                mostrarMensagem(
-                    "usageMessage",
-                    "Preencha todos os campos.",
-                    "error"
-                );
-
-                return;
-            }
-
-
-            button.disabled = true;
-            button.textContent = "Registrando...";
-
-
-            try {
-
-                const resposta = await fetch("/api/usages", {
-
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-
-                    body: JSON.stringify({
-                        projectId: projectId,
-                        tokens: tokens,
-                        model: model
-                    })
-
-                });
-
-
-                if (!resposta.ok) {
-
-                    const texto = await resposta.text();
-
-                    throw new Error(
-                        texto || "Não foi possível registrar o consumo."
-                    );
-
-                }
-
-
-                const resultado = await resposta.json();
-
-
-                let mensagem =
-                    "Consumo registrado com sucesso.";
-
-
-                if (resultado.alertLevel) {
-
-                    mensagem +=
-                        " Nível de alerta: " +
-                        resultado.alertLevel;
-
-                }
-
-
-                mostrarMensagem(
-                    "usageMessage",
-                    mensagem,
-                    "success"
-                );
-
-
-                mostrarAlerta(resultado);
-
-
-                document
-                    .getElementById("usageForm")
-                    .reset();
-
-
-            } catch (erro) {
-
-                console.error(erro);
-
-                mostrarMensagem(
-                    "usageMessage",
-                    "Erro ao registrar consumo: " + erro.message,
-                    "error"
-                );
-
-            } finally {
-
-                button.disabled = false;
-                button.textContent = "Registrar consumo";
-
-            }
-
-        });
-
-
-    /* =====================================================
-       CARREGAR PROJETOS
-    ===================================================== */
-
-    async function carregarProjetos() {
-
-        const tabela =
-            document.getElementById("projectsTable");
-
-
-        try {
-
-            const resposta =
-                await fetch("/api/projects");
-
-
-            if (!resposta.ok) {
-
-                throw new Error(
-                    "Erro ao carregar projetos"
-                );
-
-            }
-
-
-            const projetos =
-                await resposta.json();
-
-
-            tabela.innerHTML = "";
-
-
-            if (!projetos || projetos.length === 0) {
-
-                tabela.innerHTML = `
-                    <tr>
-                        <td colspan="3" class="empty">
-                            Nenhum projeto cadastrado.
-                        </td>
-                    </tr>
-                `;
-
-                return;
-            }
-
-
-            projetos.forEach(projeto => {
-
-                const linha =
-                    document.createElement("tr");
-
-
-                linha.innerHTML = `
-                    <td>${escaparHTML(projeto.id)}</td>
-                    <td>${escaparHTML(projeto.name)}</td>
-                    <td>${escaparHTML(projeto.area)}</td>
-                `;
-
-
-                tabela.appendChild(linha);
-
-            });
-
-
-        } catch (erro) {
-
-            console.error(erro);
-
-            tabela.innerHTML = `
-                <tr>
-                    <td colspan="3" class="empty">
-                        Não foi possível carregar os projetos.
-                    </td>
-                </tr>
-            `;
-
-        }
-
-    }
-
-
-    /* =====================================================
-       ALERTAS
-    ===================================================== */
-
-    function mostrarAlerta(resultado) {
-
-        const alerta =
-            document.getElementById("alertBox");
-
-
-        const nivel =
-            resultado.alertLevel || "INFO";
-
-
-        const mensagem =
-            resultado.alertMessage ||
-            "Nenhum alerta registrado.";
-
-
-        alerta.className =
-            "alert-content";
-
-
-        if (nivel === "CRITICAL") {
-
-            alerta.classList.add("critical");
-
-        } else if (nivel === "WARNING") {
-
-            alerta.classList.add("warning");
-
-        } else {
-
-            alerta.classList.add("info");
-
-        }
-
-
-        alerta.innerHTML = `
-            <strong>${escaparHTML(nivel)}</strong>
-            <br>
-            ${escaparHTML(mensagem)}
-        `;
-
-    }
-
-
-    /* =====================================================
-       SEGURANÇA HTML
-    ===================================================== */
-
-    function escaparHTML(valor) {
-
-        if (valor === null || valor === undefined) {
-            return "";
-        }
-
-
-        return String(valor)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-
-    }
-
-
-    /* =====================================================
-       MENU LATERAL
-    ===================================================== */
+    /* =========================
+       NAVEGAÇÃO
+    ========================= */
 
     document
         .querySelectorAll(".menu-item")
-        .forEach(item => {
+        .forEach(function(item) {
 
             item.addEventListener("click", function() {
 
-                /*
-                 * Remove o active de todos
-                 */
                 document
                     .querySelectorAll(".menu-item")
-                    .forEach(menu => {
+                    .forEach(function(button) {
 
-                        menu.classList.remove("active");
+                        button.classList.remove("active");
 
                     });
 
 
-                /*
-                 * Ativa o botão clicado
-                 */
-                this.classList.add("active");
-
-
-                /*
-                 * Descobre a seção
-                 */
-                const targetId =
-                    this.getAttribute("data-target");
+                item.classList.add("active");
 
 
                 const target =
-                    document.getElementById(targetId);
+                    item.dataset.target;
 
 
-                /*
-                 * Vai para a seção
-                 */
-                if (target) {
+                const element =
+                    document.getElementById(target);
 
-                    target.scrollIntoView({
+
+                if (element) {
+
+                    element.scrollIntoView({
                         behavior: "smooth",
                         block: "start"
                     });
@@ -1374,13 +1190,648 @@
         });
 
 
-    /* =====================================================
+    /* =========================
+       DASHBOARD
+    ========================= */
+
+    async function carregarDashboard() {
+
+        try {
+
+            const response =
+                await fetch("/api/dashboard");
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    "Não foi possível carregar o dashboard."
+                );
+
+            }
+
+
+            const data =
+                await response.json();
+
+
+            document.getElementById(
+                "totalFuncionarios"
+            ).textContent =
+                Number(data.employees || 0)
+                    .toLocaleString("pt-BR");
+
+
+            document.getElementById(
+                "totalEmpresas"
+            ).textContent =
+                Number(data.companies || 0)
+                    .toLocaleString("pt-BR");
+
+
+            document.getElementById(
+                "totalDepartamentos"
+            ).textContent =
+                Number(data.departments || 0)
+                    .toLocaleString("pt-BR");
+
+
+            document.getElementById(
+                "totalIA"
+            ).textContent =
+                Number(data.aiUsage || 0)
+                    .toLocaleString("pt-BR");
+
+
+            criarGrafico(data);
+
+        } catch (error) {
+
+            console.error(
+                "Erro ao carregar dashboard:",
+                error
+            );
+
+        }
+
+    }
+
+
+    /* =========================
+       GRÁFICO
+    ========================= */
+
+    function criarGrafico(data) {
+
+        const canvas =
+            document.getElementById(
+                "dashboardChart"
+            );
+
+
+        if (!canvas) {
+            return;
+        }
+
+
+        if (dashboardChart) {
+
+            dashboardChart.destroy();
+
+        }
+
+
+        dashboardChart =
+            new Chart(canvas, {
+
+                type: "bar",
+
+                data: {
+
+                    labels: [
+                        "Funcionários",
+                        "Empresas",
+                        "Departamentos",
+                        "Registros de IA"
+                    ],
+
+                    datasets: [
+
+                        {
+                            label: "Quantidade",
+
+                            data: [
+                                data.employees || 0,
+                                data.companies || 0,
+                                data.departments || 0,
+                                data.aiUsage || 0
+                            ],
+
+                            backgroundColor: [
+                                "#ff3b00",
+                                "#ff6a00",
+                                "#ff3b00",
+                                "#ff9800"
+                            ],
+
+                            borderColor: "#ff3b00",
+
+                            borderWidth: 1
+                        }
+
+                    ]
+
+                },
+
+                options: {
+
+                    responsive: true,
+
+                    maintainAspectRatio: false,
+
+                    plugins: {
+
+                        legend: {
+                            display: false
+                        }
+
+                    },
+
+                    scales: {
+
+                        x: {
+
+                            ticks: {
+                                color: "#858585"
+                            },
+
+                            grid: {
+                                color: "#202020"
+                            }
+
+                        },
+
+                        y: {
+
+                            beginAtZero: true,
+
+                            ticks: {
+                                color: "#858585"
+                            },
+
+                            grid: {
+                                color: "#202020"
+                            }
+
+                        }
+
+                    }
+
+                }
+
+            });
+
+    }
+
+
+    /* =========================
+       INDICADORES
+    ========================= */
+
+    function atualizarIndicadores() {
+
+        document.getElementById(
+            "indicadorProjetos"
+        ).textContent =
+            projetos.length;
+
+
+        document.getElementById(
+            "indicadorConsumo"
+        ).textContent =
+            usos.length;
+
+
+        const totalTokens =
+            usos.reduce(function(total, uso) {
+
+                return total +
+                    Number(uso.tokens || 0);
+
+            }, 0);
+
+
+        document.getElementById(
+            "indicadorTokens"
+        ).textContent =
+            totalTokens.toLocaleString("pt-BR");
+
+
+        if (usos.length > 0) {
+
+            const ultimo =
+                usos[usos.length - 1];
+
+
+            document.getElementById(
+                "indicadorAlerta"
+            ).textContent =
+                ultimo.alertLevel ||
+                "INFO";
+
+        } else {
+
+            document.getElementById(
+                "indicadorAlerta"
+            ).textContent =
+                "Nenhum";
+
+        }
+
+    }
+
+
+    /* =========================
+       CRIAR PROJETO
+    ========================= */
+
+    async function criarProjeto() {
+
+        const nome =
+            document.getElementById(
+                "nome"
+            ).value.trim();
+
+
+        const area =
+            document.getElementById(
+                "area"
+            ).value.trim();
+
+
+        if (!nome || !area) {
+
+            document.getElementById(
+                "out"
+            ).textContent =
+                "Informe o nome e a área do projeto.";
+
+            return;
+        }
+
+
+        try {
+
+            const response =
+                await fetch(
+                    "/api/projects",
+                    {
+
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
+
+                        body: JSON.stringify({
+
+                            name: nome,
+
+                            area: area
+
+                        })
+
+                    }
+                );
+
+
+            const data =
+                await response.json();
+
+
+            document.getElementById(
+                "out"
+            ).textContent =
+                JSON.stringify(
+                    data,
+                    null,
+                    2
+                );
+
+
+            if (!response.ok) {
+
+                return;
+
+            }
+
+
+            document.getElementById(
+                "nome"
+            ).value = "";
+
+
+            document.getElementById(
+                "area"
+            ).value = "";
+
+
+            await listar();
+
+
+        } catch (error) {
+
+            document.getElementById(
+                "out"
+            ).textContent =
+                "Erro ao criar projeto: " +
+                error.message;
+
+        }
+
+    }
+
+
+    /* =========================
+       REGISTRAR CONSUMO
+    ========================= */
+
+    async function consumir() {
+
+        const projectId =
+            document.getElementById(
+                "pid"
+            ).value.trim();
+
+
+        const tokens =
+            Number(
+                document.getElementById(
+                    "tokens"
+                ).value
+            );
+
+
+        const model =
+            document.getElementById(
+                "modelo"
+            ).value.trim();
+
+
+        if (!projectId || !tokens || !model) {
+
+            document.getElementById(
+                "out"
+            ).textContent =
+                "Preencha todos os campos do consumo.";
+
+            return;
+
+        }
+
+
+        try {
+
+            const response =
+                await fetch(
+                    "/api/usages",
+                    {
+
+                        method: "POST",
+
+                        headers: {
+
+                            "Content-Type":
+                                "application/json"
+
+                        },
+
+                        body: JSON.stringify({
+
+                            projectId:
+                                projectId,
+
+                            tokens:
+                                tokens,
+
+                            model:
+                                model
+
+                        })
+
+                    }
+                );
+
+
+            const data =
+                await response.json();
+
+
+            document.getElementById(
+                "out"
+            ).textContent =
+                JSON.stringify(
+                    data,
+                    null,
+                    2
+                );
+
+
+            if (!response.ok) {
+
+                return;
+
+            }
+
+
+            usos.push({
+
+                tokens: tokens,
+
+                model: model,
+
+                alertLevel:
+                    data.alertLevel || "INFO",
+
+                alertMessage:
+                    data.alertMessage || ""
+
+            });
+
+
+            atualizarIndicadores();
+
+
+            const alerta =
+                document.getElementById(
+                    "alerta"
+                );
+
+
+            if (
+                data.alertLevel ||
+                data.alertMessage
+            ) {
+
+                alerta.classList.add(
+                    "show"
+                );
+
+
+                alerta
+                    .querySelector(
+                        ".alert-message"
+                    )
+                    .textContent =
+                    (
+                        data.alertLevel ||
+                        ""
+                    ) +
+                    " - " +
+                    (
+                        data.alertMessage ||
+                        ""
+                    );
+
+            } else {
+
+                alerta.classList.remove(
+                    "show"
+                );
+
+            }
+
+
+        } catch (error) {
+
+            document.getElementById(
+                "out"
+            ).textContent =
+                "Erro ao registrar consumo: " +
+                error.message;
+
+        }
+
+    }
+
+
+    /* =========================
+       LISTAR PROJETOS
+    ========================= */
+
+    async function listar() {
+
+        try {
+
+            const response =
+                await fetch(
+                    "/api/projects"
+                );
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    "Erro na API de projetos."
+                );
+
+            }
+
+
+            const data =
+                await response.json();
+
+
+            projetos =
+                Array.isArray(data)
+                    ? data
+                    : [];
+
+
+            const lista =
+                document.getElementById(
+                    "listaProjetos"
+                );
+
+
+            lista.innerHTML = "";
+
+
+            if (
+                !projetos ||
+                projetos.length === 0
+            ) {
+
+                lista.innerHTML = `
+
+                    <tr>
+
+                        <td
+                            colspan="3"
+                            class="empty"
+                        >
+                            Nenhum projeto cadastrado.
+                        </td>
+
+                    </tr>
+
+                `;
+
+
+                atualizarIndicadores();
+
+                return;
+
+            }
+
+
+            projetos.forEach(
+                function(project) {
+
+                    const row =
+                        document.createElement(
+                            "tr"
+                        );
+
+
+                    row.innerHTML = `
+
+                        <td>
+                            ${project.id}
+                        </td>
+
+                        <td>
+                            ${project.name}
+                        </td>
+
+                        <td>
+                            ${project.area}
+                        </td>
+
+                    `;
+
+
+                    lista.appendChild(
+                        row
+                    );
+
+                }
+            );
+
+
+            atualizarIndicadores();
+
+
+        } catch (error) {
+
+            document.getElementById(
+                "out"
+            ).textContent =
+                "Erro ao listar projetos: " +
+                error.message;
+
+        }
+
+    }
+
+
+    /* =========================
        INICIALIZAÇÃO
-    ===================================================== */
+    ========================= */
 
-    carregarDashboard();
+    document.addEventListener(
+        "DOMContentLoaded",
+        async function() {
 
-    carregarProjetos();
+            await listar();
+
+            await carregarDashboard();
+
+            atualizarIndicadores();
+
+        }
+    );
 
 </script>
 
