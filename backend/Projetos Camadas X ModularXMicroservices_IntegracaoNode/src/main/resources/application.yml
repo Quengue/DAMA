@@ -3,6 +3,7 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/iadb}
     username: ${DB_USER:ia}
     password: ${DB_PASSWORD:ia}
+
   jpa:
     hibernate:
       ddl-auto: update

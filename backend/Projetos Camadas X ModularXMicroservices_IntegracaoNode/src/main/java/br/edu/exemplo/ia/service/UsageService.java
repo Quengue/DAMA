@@ -19,6 +19,7 @@ public class UsageService implements UsageUseCase {
             UsageRepository usageRepo,
             ProjectUseCase projects,
             AlertClient alerts) {
+
         this.usageRepo = usageRepo;
         this.projects = projects;
         this.alerts = alerts;
@@ -26,15 +27,19 @@ public class UsageService implements UsageUseCase {
 
     @Override
     public UsageResponse register(UsageRequest request) {
+
         if (!projects.exists(request.projectId())) {
             throw new IllegalArgumentException("Projeto inexistente");
         }
 
         AIUsage usage = usageRepo.save(
-                new AIUsage(request.projectId(), request.tokens(), request.model())
+                new AIUsage(
+                        request.projectId(),
+                        request.tokens(),
+                        request.model()
+                )
         );
 
-        // Após persistir o consumo, o monólito chama o serviço Node.js via REST.
         AlertResponse alert = alerts.evaluate(
                 usage.getProjectId(),
                 usage.getTokens(),
