@@ -11,6 +11,8 @@ public record DashboardColaboradorView(
         long metasEmAndamento,
         long metasConcluidas,
         BigDecimal pontosTotais,
-        BigDecimal aiCreditsSaldo
+        BigDecimal aiCreditsSaldo,
+        String nivelEvolucao,
+        long conquistas
 ) {
 }

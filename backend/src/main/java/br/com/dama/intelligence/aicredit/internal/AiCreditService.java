@@ -7,7 +7,9 @@ import br.com.dama.intelligence.colaborador.api.ColaboradorView;
 import br.com.dama.intelligence.organizacao.api.OrganizacaoFacade;
 import br.com.dama.intelligence.shared.error.NotFoundException;
 import br.com.dama.intelligence.shared.error.ValidationException;
+import br.com.dama.intelligence.shared.event.DesempenhoAtualizadoEvent;
 import br.com.dama.intelligence.shared.security.UsuarioAtual;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,13 +23,15 @@ class AiCreditService implements AiCreditFacade {
     private final ColaboradorFacade colaboradores;
     private final OrganizacaoFacade organizacao;
     private final AuditoriaFacade auditoria;
+    private final ApplicationEventPublisher eventos;
 
     AiCreditService(AiCreditRepository repo, ColaboradorFacade colaboradores, OrganizacaoFacade organizacao,
-                    AuditoriaFacade auditoria) {
+                    AuditoriaFacade auditoria, ApplicationEventPublisher eventos) {
         this.repo = repo;
         this.colaboradores = colaboradores;
         this.organizacao = organizacao;
         this.auditoria = auditoria;
+        this.eventos = eventos;
     }
 
     // ---- RF19 ---------------------------------------------------------------------------------
@@ -91,6 +95,7 @@ class AiCreditService implements AiCreditFacade {
             totalConcedido = totalConcedido.add(regra.creditosConcedidos());
         }
 
+        eventos.publishEvent(new DesempenhoAtualizadoEvent(colaboradorId));
         return new RegistroAtividadeResultadoView(registro, !regras.isEmpty(), totalConcedido);
     }
 
@@ -150,6 +155,9 @@ class AiCreditService implements AiCreditFacade {
 
         auditoria.registrar(colaborador.empresaId(), UsuarioAtual.id(), "ai_credit_transacao",
                 transacao.transacaoId().toString(), comando.tipo(), null);
+        if ("CREDITO".equals(comando.tipo())) {
+            eventos.publishEvent(new DesempenhoAtualizadoEvent(colaboradorId));
+        }
         return transacao;
     }
 

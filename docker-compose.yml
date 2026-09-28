@@ -1,32 +1,52 @@
-version: "3.8"
+# DAMA Intelligence — stack completa: PostgreSQL + API Spring Boot + front-end (BFF Node).
+# Uso: docker compose up --build  ->  http://localhost:3000
+# Variáveis opcionais em .env (ver .env.example).
 
 services:
   db:
     image: postgres:16
     environment:
-      POSTGRES_DB: dama
-      POSTGRES_USER: dama
-      POSTGRES_PASSWORD: dama
+      POSTGRES_DB: ${DB_NAME:-dama}
+      POSTGRES_USER: ${DB_USER:-dama}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-dama}
     ports:
-      - "5432:5432"
+      - "${DB_PORTA:-5432}:5432"
     volumes:
-      - ./database:/docker-entrypoint-initdb.d:ro
+      - ./database/01_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./database/02_views.sql:/docker-entrypoint-initdb.d/02_views.sql:ro
+      - ./database/03_seed.sql:/docker-entrypoint-initdb.d/03_seed.sql:ro
+      # dados de demonstração; remova a linha abaixo para subir com o banco vazio
+      - ./database/demo/04_demo.sql:/docker-entrypoint-initdb.d/04_demo.sql:ro
+      - dama-dados:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dama -d dama"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-dama} -d ${DB_NAME:-dama}"]
       interval: 5s
       timeout: 3s
       retries: 10
 
   backend:
-    build: .
+    build: ./backend
     depends_on:
       db:
         condition: service_healthy
     environment:
       DB_HOST: db
       DB_PORT: 5432
-      DB_NAME: dama
-      DB_USER: dama
-      DB_PASSWORD: dama
+      DB_NAME: ${DB_NAME:-dama}
+      DB_USER: ${DB_USER:-dama}
+      DB_PASSWORD: ${DB_PASSWORD:-dama}
     ports:
-      - "8080:8080"
+      - "${BACKEND_PORTA:-8080}:8080"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      API_BASE_URL: http://backend:8080
+    ports:
+      - "${FRONTEND_PORTA:-3000}:3000"
+
+volumes:
+  dama-dados:

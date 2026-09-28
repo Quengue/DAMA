@@ -20,4 +20,7 @@ public interface OrganizacaoFacade {
 
     boolean departamentoPertenceAEmpresa(Long departamentoId, Long empresaId);
 
+    /** 404 se o departamento não existir. */
+    DepartamentoView buscarDepartamento(Long departamentoId);
+
 }

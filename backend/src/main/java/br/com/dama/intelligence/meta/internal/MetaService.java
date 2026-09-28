@@ -8,7 +8,9 @@ import br.com.dama.intelligence.meta.api.*;
 import br.com.dama.intelligence.organizacao.api.OrganizacaoFacade;
 import br.com.dama.intelligence.shared.error.NotFoundException;
 import br.com.dama.intelligence.shared.error.ValidationException;
+import br.com.dama.intelligence.shared.event.DesempenhoAtualizadoEvent;
 import br.com.dama.intelligence.shared.security.UsuarioAtual;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,14 +28,16 @@ class MetaService implements MetaFacade {
     private final OrganizacaoFacade organizacao;
     private final IndicadorFacade indicadores;
     private final AuditoriaFacade auditoria;
+    private final ApplicationEventPublisher eventos;
 
     MetaService(MetaRepository repo, ColaboradorFacade colaboradores, OrganizacaoFacade organizacao,
-                IndicadorFacade indicadores, AuditoriaFacade auditoria) {
+                IndicadorFacade indicadores, AuditoriaFacade auditoria, ApplicationEventPublisher eventos) {
         this.repo = repo;
         this.colaboradores = colaboradores;
         this.organizacao = organizacao;
         this.indicadores = indicadores;
         this.auditoria = auditoria;
+        this.eventos = eventos;
     }
 
     @Override
@@ -92,13 +96,16 @@ class MetaService implements MetaFacade {
         MetaView meta = buscar(metaId);
         repo.atualizarStatus(metaId, status);
         auditoria.registrar(meta.empresaId(), UsuarioAtual.id(), "meta", metaId.toString(), "STATUS_" + status.toUpperCase(), null);
+        if ("Concluida".equals(status)) {
+            notificarConclusao(meta);
+        }
         return buscar(metaId);
     }
 
     /**
-     * RF30. Assume que "atingir a meta" significa valorAtual >= valorAlvo; nesse caso a meta
-     * passa automaticamente para "Concluida". Metas em que menor é melhor (ex.: reduzir defeitos)
-     * devem ser concluídas manualmente via alterarStatus.
+     * RF30. A meta passa automaticamente para "Concluida" quando o valor atual atinge o alvo:
+     * valorAtual >= valorAlvo, ou valorAtual <= valorAlvo se o indicador da meta for do tipo
+     * "menor é melhor" (ex.: retrabalho).
      */
     @Override
     @Transactional
@@ -110,9 +117,10 @@ class MetaService implements MetaFacade {
 
         MetaProgressoView progresso = repo.inserirProgresso(metaId, comando.valorAtual());
 
-        if (comando.valorAtual().compareTo(meta.valorAlvo()) >= 0) {
+        if (atingiuAlvo(meta, comando.valorAtual())) {
             repo.atualizarStatus(metaId, "Concluida");
             auditoria.registrar(meta.empresaId(), UsuarioAtual.id(), "meta", metaId.toString(), "CONCLUSAO_AUTOMATICA", null);
+            notificarConclusao(meta);
         }
         return progresso;
     }
@@ -121,6 +129,18 @@ class MetaService implements MetaFacade {
     public List<MetaProgressoView> historicoProgresso(Long metaId) {
         buscar(metaId); // 404 se a meta não existir
         return repo.historico(metaId);
+    }
+
+    boolean atingiuAlvo(MetaView meta, java.math.BigDecimal valorAtual) {
+        boolean maiorMelhor = meta.indicadorId() == null || indicadores.maiorMelhor(meta.indicadorId());
+        int comparacao = valorAtual.compareTo(meta.valorAlvo());
+        return maiorMelhor ? comparacao >= 0 : comparacao <= 0;
+    }
+
+    private void notificarConclusao(MetaView meta) {
+        if (meta.colaboradorId() != null) {
+            eventos.publishEvent(new DesempenhoAtualizadoEvent(meta.colaboradorId()));
+        }
     }
 
     private void exigirEmpresa(Long empresaId) {

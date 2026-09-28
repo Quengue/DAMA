@@ -18,4 +18,7 @@ public interface AnalyticsFacade {
 
     /** RF33/RF36: valor mais recente de cada indicador por equipe; indicadorId opcional para comparar um indicador só. */
     List<IndicadorDepartamentoView> indicadoresPorDepartamento(Long empresaId, Long indicadorId);
+
+    /** RF15/US24: metas vencidas ou em risco, indicadores em queda, equipes abaixo da média e colaboradores sem atividade. */
+    AnaliseGestaoView analisarGestao(Long empresaId);
 }

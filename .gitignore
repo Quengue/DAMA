@@ -1,4 +1,22 @@
+# Java / Maven
 target/
 *.class
+
+# Node
+node_modules/
+npm-debug.log*
+
+# IDEs e sistema
 .idea/
 *.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Ambiente
+.env
+
+# R / Jupyter
+.Rhistory
+.RData
+.ipynb_checkpoints/

@@ -1,0 +1,17 @@
+{
+  "name": "dama-intelligence-frontend",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Front-end do DAMA Intelligence: SPA em JavaScript puro servida por um BFF Node/Express que encaminha /api ao backend.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "chart.js": "^4.5.1",
+    "express": "^5.2.1"
+  }
+}

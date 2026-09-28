@@ -9,7 +9,9 @@ import br.com.dama.intelligence.reconhecimento.api.ReconhecimentoFacade;
 import br.com.dama.intelligence.reconhecimento.api.ReconhecimentoView;
 import br.com.dama.intelligence.shared.error.NotFoundException;
 import br.com.dama.intelligence.shared.error.ValidationException;
+import br.com.dama.intelligence.shared.event.DesempenhoAtualizadoEvent;
 import br.com.dama.intelligence.shared.security.UsuarioAtual;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,13 +24,15 @@ class ReconhecimentoService implements ReconhecimentoFacade {
     private final ColaboradorFacade colaboradores;
     private final OrganizacaoFacade organizacao;
     private final AuditoriaFacade auditoria;
+    private final ApplicationEventPublisher eventos;
 
     ReconhecimentoService(ReconhecimentoRepository repo, ColaboradorFacade colaboradores,
-                          OrganizacaoFacade organizacao, AuditoriaFacade auditoria) {
+                          OrganizacaoFacade organizacao, AuditoriaFacade auditoria, ApplicationEventPublisher eventos) {
         this.repo = repo;
         this.colaboradores = colaboradores;
         this.organizacao = organizacao;
         this.auditoria = auditoria;
+        this.eventos = eventos;
     }
 
     @Override
@@ -62,6 +66,7 @@ class ReconhecimentoService implements ReconhecimentoFacade {
         ReconhecimentoView criado = repo.inserir(empresaId, comando.colaboradorId(), UsuarioAtual.id(),
                 comando.tipo(), comando.descricao());
         auditoria.registrar(empresaId, UsuarioAtual.id(), "reconhecimento", criado.reconhecimentoId().toString(), "CRIACAO", null);
+        eventos.publishEvent(new DesempenhoAtualizadoEvent(comando.colaboradorId()));
         return criado;
     }
 }

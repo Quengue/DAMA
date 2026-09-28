@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/colaboradores/{colaboradorId}/dashboard")
+@RequestMapping("/api")
 public class DashboardController {
 
     private final DashboardFacade facade;
@@ -16,9 +16,15 @@ public class DashboardController {
         this.facade = facade;
     }
 
-    @GetMapping
+    @GetMapping("/colaboradores/{colaboradorId}/dashboard")
     @PreAuthorize("hasAuthority('DESEMPENHO_LER')")
     public DashboardColaboradorView dashboard(@PathVariable Long colaboradorId) {
         return facade.doColaborador(colaboradorId);
+    }
+
+    @GetMapping("/departamentos/{departamentoId}/dashboard")
+    @PreAuthorize("hasAuthority('DESEMPENHO_LER')")
+    public DashboardEquipeView dashboardEquipe(@PathVariable Long departamentoId) {
+        return facade.daEquipe(departamentoId);
     }
 }
