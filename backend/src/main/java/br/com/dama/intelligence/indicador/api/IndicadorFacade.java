@@ -19,4 +19,7 @@ public interface IndicadorFacade {
 
     boolean pertenceAEmpresa(Long indicadorId, Long empresaId);
 
+    /** false quando o indicador é do tipo "menor é melhor". */
+    boolean maiorMelhor(Long indicadorId);
+
 }

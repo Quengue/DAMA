@@ -14,13 +14,12 @@ library(ggplot2)
 library(tidyr)
 library(knitr)
 library(tidyverse)
-#SUBSTITUIR DIRETORIO
-setwd("C:/Users/ricardo.matteo/Downloads/codes/R/MADA")
+# Os CSVs ficam em Deliverable1/CSVsNecessarios (caminho relativo a este .rmd)
 library(readxl)
 options(scipen = 99)
 list.files()
 file.exists("employees.csv")
-knitr::opts_knit$set(root.dir = "C:/Users/ricardo.matteo/Downloads/codes/R/MADA")
+knitr::opts_knit$set(root.dir = "../CSVsNecessarios")
 ```
 
 # 1. Base de Dados e Legendas das Variáveis

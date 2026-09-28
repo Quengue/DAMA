@@ -8,7 +8,9 @@ import br.com.dama.intelligence.organizacao.api.OrganizacaoFacade;
 import br.com.dama.intelligence.pontuacao.api.*;
 import br.com.dama.intelligence.shared.error.NotFoundException;
 import br.com.dama.intelligence.shared.error.ValidationException;
+import br.com.dama.intelligence.shared.event.DesempenhoAtualizadoEvent;
 import br.com.dama.intelligence.shared.security.UsuarioAtual;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,14 +25,16 @@ class PontuacaoService implements PontuacaoFacade {
     private final OrganizacaoFacade organizacao;
     private final AiCreditFacade aiCredits;
     private final AuditoriaFacade auditoria;
+    private final ApplicationEventPublisher eventos;
 
     PontuacaoService(PontuacaoRepository repo, ColaboradorFacade colaboradores, OrganizacaoFacade organizacao,
-                     AiCreditFacade aiCredits, AuditoriaFacade auditoria) {
+                     AiCreditFacade aiCredits, AuditoriaFacade auditoria, ApplicationEventPublisher eventos) {
         this.repo = repo;
         this.colaboradores = colaboradores;
         this.organizacao = organizacao;
         this.aiCredits = aiCredits;
         this.auditoria = auditoria;
+        this.eventos = eventos;
     }
 
     @Override
@@ -80,6 +84,7 @@ class PontuacaoService implements PontuacaoFacade {
         String descricao = comando.descricao() != null && !comando.descricao().isBlank() ? comando.descricao() : regra.nome();
         PontuacaoView lancada = repo.inserirPontuacao(colaboradorId, regra.regraId(), regra.pontos(), descricao);
         auditoria.registrar(colaborador.empresaId(), UsuarioAtual.id(), "pontuacao", lancada.pontuacaoId().toString(), "LANCAMENTO", null);
+        eventos.publishEvent(new DesempenhoAtualizadoEvent(colaboradorId));
         return lancada;
     }
 
@@ -96,6 +101,7 @@ class PontuacaoService implements PontuacaoFacade {
         PontuacaoView lancada = repo.inserirPontuacao(colaboradorId, null, pontos, descricao);
         auditoria.registrar(colaborador.empresaId(), UsuarioAtual.id(), "pontuacao", lancada.pontuacaoId().toString(),
                 "LANCAMENTO_AUTOMATICO", null);
+        eventos.publishEvent(new DesempenhoAtualizadoEvent(colaboradorId));
         return lancada;
     }
 

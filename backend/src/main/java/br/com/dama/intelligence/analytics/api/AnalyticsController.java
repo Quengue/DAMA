@@ -32,8 +32,9 @@ public class AnalyticsController {
         return facade.rankingDepartamentos(empresaId);
     }
 
+    /** US11: o colaborador também vê o ranking, por isso basta GAMIFICACAO_LER. */
     @GetMapping("/ranking-colaboradores")
-    @PreAuthorize("hasAuthority('ANALYTICS_LER')")
+    @PreAuthorize("hasAnyAuthority('ANALYTICS_LER', 'GAMIFICACAO_LER')")
     public List<RankingColaboradorView> rankingColaboradores(@PathVariable Long empresaId) {
         return facade.rankingColaboradores(empresaId);
     }
@@ -43,5 +44,11 @@ public class AnalyticsController {
     public List<IndicadorDepartamentoView> indicadoresPorDepartamento(@PathVariable Long empresaId,
                                                                         @RequestParam(required = false) Long indicadorId) {
         return facade.indicadoresPorDepartamento(empresaId, indicadorId);
+    }
+
+    @GetMapping("/alertas")
+    @PreAuthorize("hasAuthority('ANALYTICS_LER')")
+    public AnaliseGestaoView alertas(@PathVariable Long empresaId) {
+        return facade.analisarGestao(empresaId);
     }
 }

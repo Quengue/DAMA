@@ -59,4 +59,10 @@ class OrganizacaoService implements OrganizacaoFacade {
         return repo.departamentoPertenceAEmpresa(departamentoId, empresaId);
     }
 
+    @Override
+    public DepartamentoView buscarDepartamento(Long departamentoId) {
+        return repo.buscarDepartamento(departamentoId)
+                .orElseThrow(() -> new NotFoundException("Departamento inexistente: " + departamentoId));
+    }
+
 }

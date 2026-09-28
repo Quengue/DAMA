@@ -45,6 +45,13 @@ class OrganizacaoRepository {
                 empresaId);
     }
 
+    java.util.Optional<DepartamentoView> buscarDepartamento(Long departamentoId) {
+        return jdbc.query(
+                "select departamento_id, empresa_id, nome from dama.departamento where departamento_id = ?",
+                (rs, i) -> new DepartamentoView(rs.getLong("departamento_id"), rs.getLong("empresa_id"), rs.getString("nome")),
+                departamentoId).stream().findFirst();
+    }
+
     boolean departamentoPertenceAEmpresa(Long departamentoId, Long empresaId) {
         Integer n = jdbc.queryForObject(
                 "select count(*) from dama.departamento where departamento_id = ? and empresa_id = ?",

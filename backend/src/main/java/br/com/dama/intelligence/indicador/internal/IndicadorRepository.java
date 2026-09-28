@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 class IndicadorRepository {
@@ -18,29 +19,28 @@ class IndicadorRepository {
         this.jdbc = jdbc;
     }
 
-    boolean existeEmpresa(Long empresaId) {
-        Integer n = jdbc.queryForObject("select count(*) from dama.empresa where empresa_id = ?", Integer.class, empresaId);
-        return n != null && n > 0;
-    }
+    private static final String SELECT_INDICADOR =
+            "select indicador_id, empresa_id, nome, descricao, unidade, maior_melhor, ativo from dama.indicador ";
 
-    boolean existeIndicador(Long indicadorId) {
-        Integer n = jdbc.queryForObject("select count(*) from dama.indicador where indicador_id = ?", Integer.class, indicadorId);
-        return n != null && n > 0;
-    }
-
-    Long inserirIndicador(Long empresaId, String nome, String descricao, String unidade) {
+    Long inserirIndicador(Long empresaId, String nome, String descricao, String unidade, boolean maiorMelhor) {
         return jdbc.queryForObject(
-                "insert into dama.indicador (empresa_id, nome, descricao, unidade) values (?, ?, ?, ?) returning indicador_id",
-                Long.class, empresaId, nome, descricao, unidade);
+                "insert into dama.indicador (empresa_id, nome, descricao, unidade, maior_melhor) values (?, ?, ?, ?, ?) " +
+                        "returning indicador_id",
+                Long.class, empresaId, nome, descricao, unidade, maiorMelhor);
+    }
+
+    Optional<IndicadorView> buscar(Long indicadorId) {
+        return jdbc.query(SELECT_INDICADOR + "where indicador_id = ?", IndicadorRepository::mapearIndicador, indicadorId)
+                .stream().findFirst();
     }
 
     List<IndicadorView> listarPorEmpresa(Long empresaId) {
-        return jdbc.query(
-                "select indicador_id, empresa_id, nome, descricao, unidade, ativo from dama.indicador " +
-                        "where empresa_id = ? order by nome",
-                (rs, i) -> new IndicadorView(rs.getLong("indicador_id"), rs.getLong("empresa_id"),
-                        rs.getString("nome"), rs.getString("descricao"), rs.getString("unidade"), rs.getBoolean("ativo")),
-                empresaId);
+        return jdbc.query(SELECT_INDICADOR + "where empresa_id = ? order by nome", IndicadorRepository::mapearIndicador, empresaId);
+    }
+
+    private static IndicadorView mapearIndicador(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+        return new IndicadorView(rs.getLong("indicador_id"), rs.getLong("empresa_id"), rs.getString("nome"),
+                rs.getString("descricao"), rs.getString("unidade"), rs.getBoolean("maior_melhor"), rs.getBoolean("ativo"));
     }
 
     Long inserirValor(Long indicadorId, Long colaboradorId, Long departamentoId, LocalDate periodo,

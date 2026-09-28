@@ -9,7 +9,9 @@ import br.com.dama.intelligence.pontuacao.api.PontuacaoFacade;
 import br.com.dama.intelligence.shared.error.ConflictException;
 import br.com.dama.intelligence.shared.error.NotFoundException;
 import br.com.dama.intelligence.shared.error.ValidationException;
+import br.com.dama.intelligence.shared.event.DesempenhoAtualizadoEvent;
 import br.com.dama.intelligence.shared.security.UsuarioAtual;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,14 +30,16 @@ class DesafioService implements DesafioFacade {
     private final OrganizacaoFacade organizacao;
     private final PontuacaoFacade pontuacao;
     private final AuditoriaFacade auditoria;
+    private final ApplicationEventPublisher eventos;
 
     DesafioService(DesafioRepository repo, ColaboradorFacade colaboradores, OrganizacaoFacade organizacao,
-                   PontuacaoFacade pontuacao, AuditoriaFacade auditoria) {
+                   PontuacaoFacade pontuacao, AuditoriaFacade auditoria, ApplicationEventPublisher eventos) {
         this.repo = repo;
         this.colaboradores = colaboradores;
         this.organizacao = organizacao;
         this.pontuacao = pontuacao;
         this.auditoria = auditoria;
+        this.eventos = eventos;
     }
 
     @Override
@@ -124,6 +128,7 @@ class DesafioService implements DesafioFacade {
         }
         auditoria.registrar(desafio.empresaId(), UsuarioAtual.id(), "desafio_participante",
                 desafioId + ":" + colaboradorId, "CONCLUSAO", null);
+        eventos.publishEvent(new DesempenhoAtualizadoEvent(colaboradorId));
         return repo.buscarParticipante(desafioId, colaboradorId).orElse(participante);
     }
 
