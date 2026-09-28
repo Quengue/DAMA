@@ -11,12 +11,6 @@ Fluxo ao registrar consumo:
 
 O front-end **continua chamando apenas o monólito**. O Spring Boot atua como orquestrador da operação e devolve na mesma resposta os dados de consumo e o alerta produzido pelo Node.js.
 
-### Por que isso é didaticamente importante?
-- `UsageService` depende da interface `AlertClient`, não de HTTP nem de Node.js diretamente.
-- `NodeAlertClient` é o adaptador de infraestrutura que conhece REST e a URL do serviço Node.
-- Trocar Node.js por outro mecanismo exigiria principalmente outra implementação de `AlertClient`.
-- Apesar desse desacoplamento de código, agora existe **dependência de rede**: a operação de registro chama um processo externo.
-
 ## Serviços
 - Front-end Node/Express: http://localhost:3000
 - Backend Spring Boot: http://localhost:8080
@@ -35,7 +29,7 @@ Teste de saúde do Node:
 curl http://localhost:3001/health
 ```
 
-## Limiares didáticos do alert-service
+## Limiares do alert-service
 - abaixo de 5.000 tokens: INFO
 - de 5.000 a 9.999: WARNING
 - a partir de 10.000: CRITICAL
@@ -78,7 +72,7 @@ docker compose up --force-recreate
 Nesta versão, o `NodeAlertClient` não depende mais de injeção de `RestClient.Builder`.
 O próprio adaptador cria o `RestClient` com `RestClient.builder()`, evitando a falha de inicialização do contexto do Spring Boot observada na versão anterior.
 
-### Execução recomendada
+### Execução
 
 ```powershell
 docker compose down --volumes --remove-orphans
