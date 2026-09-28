@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: dama-intelligence-backend
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:dama}
+    username: ${DB_USER:dama}
+    password: ${DB_PASSWORD:dama}
+  jdbc:
+    template:
+      query-timeout: 5
+
+server:
+  port: 8080
+
+logging:
+  level:
+    br.com.dama.intelligence: INFO
