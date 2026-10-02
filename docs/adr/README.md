@@ -12,3 +12,4 @@ Cada decisão relevante vira um arquivo numerado a partir do [template](0000-tem
 | [0006](0006-autenticacao-por-cabecalho.md) | Autenticação simplificada por cabeçalho `X-Colaborador-Id` | Aceita, provisória |
 | [0007](0007-conquistas-por-eventos-de-dominio.md) | Conquistas avaliadas por evento de domínio | Aceita |
 | [0008](0008-front-spa-com-bff-node.md) | Front-end SPA em JavaScript puro com BFF Node/Express | Aceita |
+| [0009](0009-alert-service-node-para-alertas-de-gestao.md) | Alertas de gestão calculados por um serviço Node.js (`alert-service`) | Aceita |

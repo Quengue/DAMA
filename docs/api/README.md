@@ -105,7 +105,7 @@ Erros de negócio voltam como `400` (regra violada), `404` (não encontrado), `4
 | GET | `/empresas/{empresaId}/analytics/ranking-colaboradores` | ANALYTICS_LER ou GAMIFICACAO_LER | Ranking por pontos |
 | GET | `/empresas/{empresaId}/analytics/ranking-departamentos` | ANALYTICS_LER | Comparação entre equipes |
 | GET | `/empresas/{empresaId}/analytics/indicadores-departamentos?indicadorId` | ANALYTICS_LER | Último valor de cada indicador por equipe |
-| GET | `/empresas/{empresaId}/analytics/alertas` | ANALYTICS_LER | Análises de gestão (onde agir) |
+| GET | `/empresas/{empresaId}/analytics/alertas` | ANALYTICS_LER | Análises de gestão (onde agir); as regras rodam no `alert-service` ([ADR-0009](../adr/0009-alert-service-node-para-alertas-de-gestao.md)) ou, se ele estiver fora do ar, no próprio backend |
 | GET | `/empresas/{empresaId}/auditoria?entidade&entidadeId` | PERFIL_GERENCIAR | Eventos de auditoria |
 
 Saúde da aplicação (sem autenticação): `GET /actuator/health`.

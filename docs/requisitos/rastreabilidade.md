@@ -15,7 +15,7 @@ Histórias do Jira-PO (épico POAN-109). A numeração de RFs segue a das histó
 | POAN-118 Visão consolidada e comparação entre equipes | RF13, RF14, RF33, RF36 | `analytics` — `/visao-consolidada`, `/ranking-departamentos`, `/indicadores-departamentos` | Análises, Equipes | `visaoConsolidadaSomaPontosSemMultiplicarPorDepartamentosEMetas` |
 | POAN-119 Auditoria | RF38 | `auditoria` — `/empresas/{id}/auditoria` | Auditoria | `perfilColaborador...` (acesso negado ao Colaborador) |
 | POAN-120 Conquistas e níveis de evolução | RF31 | `conquista` — `/conquistas`, `/evolucao`, `/niveis-evolucao` | Evolução e conquistas | `ConquistaServiceTest`, `conquistaAutomaticaEhConcedidaAoAtingirOCriterioENivelSobe`, `conquistaManualEhConcedidaUmaVezSo` |
-| POAN-121 Análises de gestão e dashboard por equipe | RF15, RF32/RF33 (equipe) | `analytics` — `/analytics/alertas`; `dashboard` — `/departamentos/{id}/dashboard` | Análises de gestão, Equipes | `AnaliseGestaoRegrasTest`, `alertasApontamMetaVencidaEIndicadorEmQueda`, `dashboardDaEquipeConsolidaMembros` |
+| POAN-121 Análises de gestão e dashboard por equipe | RF15, RF32/RF33 (equipe) | `analytics` — `/analytics/alertas`; `dashboard` — `/departamentos/{id}/dashboard` | Análises de gestão, Equipes | `AnaliseGestaoRegrasTest`, `AlertaGestaoNodeTest`, `alert-service/test`, `alertasApontamMetaVencidaEIndicadorEmQueda`, `dashboardDaEquipeConsolidaMembros` |
 | POAN-122 Autenticação real e isolamento entre empresas | RNF02, RN01, RN07 | não implementado | — | — |
 
 ## Critérios de aceitação do documento (seção 8.5)

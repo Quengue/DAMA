@@ -20,4 +20,4 @@ O alerta é calculado por um serviço Node.js separado (`alert-service`). O `Usa
 
 - Trocar o Node por outro mecanismo exige só outra implementação de `AlertClient`.
 - O registro de consumo passa a depender da disponibilidade do serviço Node (chamada síncrona).
-- No produto DAMA o papel de integração Node é do BFF do front-end ([ADR-0008](0008-front-spa-com-bff-node.md)).
+- No produto DAMA o mesmo padrão (interface no backend, serviço Node separado) é aplicado aos alertas de gestão, agora com fallback local ([ADR-0009](0009-alert-service-node-para-alertas-de-gestao.md)); o BFF do front-end é tratado no [ADR-0008](0008-front-spa-com-bff-node.md).

@@ -1,6 +1,8 @@
 package br.com.dama.intelligence.analytics.internal;
 
 import br.com.dama.intelligence.analytics.api.*;
+import br.com.dama.intelligence.analytics.internal.AlertaGestaoClient.EntradaAnalise;
+import br.com.dama.intelligence.analytics.internal.AlertaGestaoClient.Tendencia;
 import br.com.dama.intelligence.analytics.internal.AnaliseGestaoRegras.ValorIndicador;
 import br.com.dama.intelligence.shared.error.NotFoundException;
 import org.springframework.stereotype.Service;
@@ -14,10 +16,12 @@ class AnalyticsService implements AnalyticsFacade {
 
     private final AnalyticsRepository repo;
     private final Clock clock;
+    private final AlertaGestaoClient motorAlertas;
 
-    AnalyticsService(AnalyticsRepository repo, Clock clock) {
+    AnalyticsService(AnalyticsRepository repo, Clock clock, AlertaGestaoClient motorAlertas) {
         this.repo = repo;
         this.clock = clock;
+        this.motorAlertas = motorAlertas;
     }
 
     @Override
@@ -50,25 +54,23 @@ class AnalyticsService implements AnalyticsFacade {
     public AnaliseGestaoView analisarGestao(Long empresaId) {
         validarEmpresa(empresaId);
         LocalDate hoje = LocalDate.now(clock);
-        List<AlertaGestaoView> alertas = new ArrayList<>();
-
-        repo.metasAbertas(empresaId).forEach(meta -> AnaliseGestaoRegras.avaliarMeta(meta, hoje).ifPresent(alertas::add));
 
         // valores vêm agrupados por série (indicador + colaborador/departamento), do mais recente ao anterior
+        List<Tendencia> tendencias = new ArrayList<>();
         List<ValorIndicador> ultimos = repo.ultimosDoisValoresPorSerie(empresaId);
         for (int i = 0; i + 1 < ultimos.size(); i++) {
             ValorIndicador atual = ultimos.get(i);
             ValorIndicador anterior = ultimos.get(i + 1);
             if (mesmaSerie(atual, anterior)) {
-                AnaliseGestaoRegras.avaliarTendencia(anterior, atual).ifPresent(alertas::add);
+                tendencias.add(new Tendencia(anterior, atual));
                 i++;
             }
         }
 
-        alertas.addAll(AnaliseGestaoRegras.avaliarEquipes(repo.equipes(empresaId)));
-
-        repo.colaboradoresSemAtividade(empresaId, hoje.minusDays(AnaliseGestaoRegras.DIAS_SEM_ATIVIDADE))
-                .forEach(c -> alertas.add(AnaliseGestaoRegras.semAtividade(c, hoje)));
+        // as regras de alerta são aplicadas pelo motor configurado (alert-service Node ou regras locais)
+        List<AlertaGestaoView> alertas = new ArrayList<>(motorAlertas.avaliar(new EntradaAnalise(hoje,
+                repo.metasAbertas(empresaId), tendencias, repo.equipes(empresaId),
+                repo.colaboradoresSemAtividade(empresaId, hoje.minusDays(AnaliseGestaoRegras.DIAS_SEM_ATIVIDADE)))));
 
         alertas.sort(Comparator.comparingInt((AlertaGestaoView a) -> AnaliseGestaoRegras.peso(a.severidade())));
         Map<String, Long> porSeveridade = new LinkedHashMap<>();

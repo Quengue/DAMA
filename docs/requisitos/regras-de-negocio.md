@@ -38,6 +38,8 @@ O documento de requisitos deixa alguns comportamentos em aberto. Estas são as r
 | Equipe abaixo da média | Pontos por colaborador ativo da equipe abaixo de metade da média da empresa (com ao menos duas equipes com pessoas) | Média |
 | Sem atividade recente | Colaborador ativo, admitido há mais de 30 dias, sem pontos nem atividades registradas nos últimos 30 dias | Baixa |
 
+As regras acima são aplicadas pelo `alert-service` (Node.js) a pedido do backend; se o serviço não responder, o backend aplica as mesmas regras localmente ([ADR-0009](../adr/0009-alert-service-node-para-alertas-de-gestao.md)).
+
 ## Permissões
 
 15. O perfil Colaborador só lê desempenho, gamificação e AI Credits (inclui o ranking). Quem lança pontos, créditos, metas e reconhecimentos é Gestor ou Administrador.

@@ -1,0 +1,14 @@
+{
+  "name": "dama-alert-service",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Serviço Node.js de alertas de gestão do DAMA Intelligence: recebe do backend os dados de metas, indicadores e equipes e devolve os alertas (RF15).",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
