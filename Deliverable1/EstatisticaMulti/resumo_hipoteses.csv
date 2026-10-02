@@ -1,0 +1,3 @@
+"Hipotese","Correlacao","Media_Com","Media_Sem","P_valor","Resultado"
+"H1: Treinamento aumenta uso de IA",0.11,7003698,5390459,0.0000186337608906116,"Evidencia a favor (p < 0,05)"
+"H2: Treinamento reduz incidentes",-0.02,0.0255,0.031,0.278662720227347,"Sem evidencia (p >= 0,05)"

@@ -1,4 +1,10 @@
+<<<<<<< Updated upstream
 version: "3.8"
+=======
+# DAMA Intelligence — stack completa: PostgreSQL + API Spring Boot + alert-service (Node) + front-end (BFF Node).
+# Uso: docker compose up --build  ->  http://localhost:3000
+# Variáveis opcionais em .env (ver .env.example).
+>>>>>>> Stashed changes
 
 services:
   db:
@@ -17,12 +23,20 @@ services:
       timeout: 3s
       retries: 10
 
+  alert-service:
+    build: ./alert-service
+    ports:
+      - "${ALERTAS_PORTA:-4000}:4000"
+
   backend:
     build: .
     depends_on:
       db:
         condition: service_healthy
+      alert-service:
+        condition: service_healthy
     environment:
+      ALERTAS_URL: http://alert-service:4000
       DB_HOST: db
       DB_PORT: 5432
       DB_NAME: dama

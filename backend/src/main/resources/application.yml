@@ -12,6 +12,26 @@ spring:
 server:
   port: 8080
 
+<<<<<<< Updated upstream
+=======
+# Alertas de gestão (RF15): com ALERTAS_URL o backend usa o alert-service Node.js (ADR-0009);
+# vazia, usa só as regras locais em Java. Se o serviço falhar, o backend também cai nas regras locais.
+dama:
+  alertas:
+    url: ${ALERTAS_URL:}
+    timeout-ms: ${ALERTAS_TIMEOUT_MS:2000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+>>>>>>> Stashed changes
 logging:
   level:
     br.com.dama.intelligence: INFO

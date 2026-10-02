@@ -29,16 +29,30 @@ O front-end **continua chamando apenas o monólito**. O Spring Boot atua como or
 docker compose up --build
 ```
 
+<<<<<<< Updated upstream
 Teste de saúde do Node:
+=======
+Variáveis: `DB_HOST` (localhost), `DB_PORT` (5432), `DB_NAME`, `DB_USER`, `DB_PASSWORD` (dama). O banco precisa dos scripts de [`../database`](../database).
+
+Alertas de gestão: `ALERTAS_URL` (vazia por padrão) aponta para o [`alert-service`](../alert-service), por exemplo `http://localhost:4000`; `ALERTAS_TIMEOUT_MS` (2000) limita a espera. Sem a URL, ou se o serviço falhar, a API aplica as regras localmente ([ADR-0009](../docs/adr/0009-alert-service-node-para-alertas-de-gestao.md)).
+
+## Testes
+>>>>>>> Stashed changes
 
 ```bash
 curl http://localhost:3001/health
 ```
 
+<<<<<<< Updated upstream
 ## Limiares didáticos do alert-service
 - abaixo de 5.000 tokens: INFO
 - de 5.000 a 9.999: WARNING
 - a partir de 10.000: CRITICAL
+=======
+- `analytics/internal/AnaliseGestaoRegrasTest`, `conquista/internal/ConquistaServiceTest`, `meta/internal/MetaServiceTest`: regras de negócio, sem banco.
+- `analytics/internal/AlertaGestaoNodeTest`: contrato com o alert-service e fallback para as regras locais, com um servidor HTTP simulado (sem Docker).
+- `DamaApiIntegrationTest`: API inteira contra PostgreSQL 16 (Testcontainers) com os scripts de `database/`. Pulado se não houver Docker.
+>>>>>>> Stashed changes
 
 ## Deployment
 1. Maven produz um JAR do monólito.

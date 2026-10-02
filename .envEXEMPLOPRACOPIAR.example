@@ -1,0 +1,9 @@
+# Copie para .env para alterar credenciais ou portas do docker-compose.
+DB_NAME=dama
+DB_USER=dama
+DB_PASSWORD=dama
+
+DB_PORTA=5432
+BACKEND_PORTA=8080
+FRONTEND_PORTA=3000
+ALERTAS_PORTA=4000

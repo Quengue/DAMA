@@ -1,0 +1,361 @@
+---
+title: "Deliverable 1 — Estatística Multivariada"
+author: "Ricardo_MADA"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(ggplot2)
+library(tidyr)
+library(knitr)
+library(tidyverse)
+# Os CSVs ficam em Deliverable1/CSVsNecessarios (caminho relativo ao .rmd)
+#setwd("C:/Users/ricardo.matteo/Downloads/codes/R/MADA")
+library(readxl)
+options(scipen = 99)
+list.files()
+file.exists("employees.csv")
+knitr::opts_knit$set(root.dir = "../CSVsNecessarios")
+```
+
+# 1. Base de Dados e Legendas das Variáveis
+
+O projeto utiliza quatro bases de dados originadas dos sistemas corporativos, cada uma com uma finalidade específica:
+
+employees.csv (Base de Colaboradores): Contém os dados demográficos e hierárquicos. Variáveis: `employee_id` (Chave identificadora), `seniority` (Nível hierárquico), `department_id` (Setor). training_records.csv (Base de Treinamentos): Histórico de capacitação em Inteligência Artificial. Variáveis: `completion_status` (Status do curso, onde "Concluido" indica sucesso). ai_usage_logs.csv (Base de Consumo): Registros transacionais de uso das ferramentas de IA. Variáveis: `input_tokens` (Volume de texto enviado), `output_tokens` (Volume de texto recebido), `request_count` (Número de interações). security_events.csv (Base de Segurança): Log de incidentes e violações de diretrizes. Variáveis: `event_id` (Identificador do incidente).
+
+# 2. Relação Entre as Bases
+
+As bases seguem uma lógica de modelagem dimensional. O arquivo `employees` atua como a Dimensão principal (Dim_Colaborador), enquanto as outras três bases funcionam como tabelas Fato transacionais.
+
+O relacionamento entre todas elas é feito através da chave primária/estrangeira `employee_id` em um modelo Star Schema. Para a análise estatística, as tabelas Fato são agregadas e unidas à Dimensão via cruzamento direto (`merge`), formando uma única Tabela Analítica (ABT).
+
+```{r importacao_etl3, include=FALSE}
+list.files()
+file.exists("employees.csv")
+```
+
+# 3. Preparação dos Dados (ETL) e Tratamento de Valores Ausentes
+
+Nesta etapa, os dados transacionais são agrupados por colaborador e unidos à base principal utilizando funções nativas do R para estruturar o código passo a passo.
+
+```{r importacao_etl, echo=FALSE}
+employees        <- read.csv("employees.csv")
+training_records <- read.csv("training_records.csv")
+ai_usage_logs    <- read.csv("ai_usage_logs.csv")
+security_events  <- read.csv("security_events.csv")
+
+# Treinamentos
+treinos_concluidos <- subset(training_records, completion_status == "Concluido")
+treinamentos_agg <- aggregate(completion_status ~ employee_id, data = treinos_concluidos, FUN = length)
+colnames(treinamentos_agg)[2] <- "cursos_concluidos"
+
+# Uso IA
+ai_usage_logs$soma_tokens <- ai_usage_logs$input_tokens + ai_usage_logs$output_tokens
+uso_tokens <- aggregate(soma_tokens ~ employee_id, data = ai_usage_logs, FUN = sum, na.rm = TRUE)
+colnames(uso_tokens)[2] <- "total_tokens"
+
+uso_reqs <- aggregate(request_count ~ employee_id, data = ai_usage_logs, FUN = length)
+colnames(uso_reqs)[2] <- "total_requests"
+
+uso_agg <- merge(uso_tokens, uso_reqs, by = "employee_id")
+
+# Segurança
+seg_agg <- aggregate(event_id ~ employee_id, data = security_events, FUN = length)
+colnames(seg_agg)[2] <- "incidentes_seguranca"
+
+# 3. Junção das Bases tipo um left join
+df_bruto <- merge(employees, treinamentos_agg, by = "employee_id", all.x = TRUE)
+df_bruto <- merge(df_bruto, uso_agg, by = "employee_id", all.x = TRUE)
+df_bruto <- merge(df_bruto, seg_agg, by = "employee_id", all.x = TRUE)
+```
+
+### Identificação e Tratamento de Nulos
+
+Ao cruzar as bases, colaboradores que não fizeram cursos ou não tiveram incidentes recebem o valor vazio
+
+```{r nulos_antes, echo=FALSE}
+# Mostrando os dados nulos gerados pela junção
+nulos_identificados <- colSums(is.na(df_bruto))
+
+tabela_nulos <- data.frame(
+  Variavel = names(nulos_identificados), 
+  Nulos = nulos_identificados
+)
+kable(tabela_nulos, caption = "Contagem de Valores Nulos (Antes do Tratamento)")
+```
+
+Para a modelagem, esses nulos são convertidos estatisticamente para zero.
+
+**O que são esses vazios e por que foram zerados?** Os vazios **não são dados perdidos**: surgem porque o `merge` com `all.x = TRUE` mantém todos os colaboradores, e quem não aparece em uma tabela fato simplesmente não tem registro naquela tabela. Ou seja, o vazio significa "nenhum evento ocorreu", que é exatamente o valor zero (zero estrutural, e não um valor desconhecido).
+
+-   `incidentes_seguranca` é uma **variável de contagem** (quantidade de eventos de segurança por colaborador): é o número de linhas de `security_events` de cada `employee_id` (`length(event_id)`). Quem não aparece em `security_events` não teve incidente, logo recebe 0.
+-   `cursos_concluidos` é a contagem de treinamentos com status "Concluido"; quem não tem nenhum recebe 0 (inclui quem nunca fez curso e quem não concluiu nenhum).
+-   `total_requests` é a contagem de registros de uso de IA e `total_tokens` é a soma de tokens (entrada + saída); quem não aparece em `ai_usage_logs` não usou as ferramentas e recebe 0.
+
+O motivo de zerar (em vez de deixar `NA`) é manter os N colaboradores na análise, sem descartar linhas, e permitir que funções como `cor()`, `mean()` e `sd()` funcionem sem `NA`. Se os vazios fossem apenas removidos, a análise ficaria restrita a quem teve incidente/uso, o que enviesaria todos os indicadores. Os zeros de `total_tokens` **não foram criados para depois serem eliminados do histograma**: o zero é o valor correto para quem não usou IA e por isso entra nas tabelas e na correlação. A exclusão deles no histograma e nos boxplots (seções 4.2 e 4.4) é uma decisão apenas de visualização, justificada nessas seções.
+
+```{r tratamento_nulos, echo=FALSE}
+df_dados <- df_bruto
+
+df_dados$cursos_concluidos[is.na(df_dados$cursos_concluidos)] <- 0
+df_dados$total_tokens[is.na(df_dados$total_tokens)]           <- 0
+df_dados$total_requests[is.na(df_dados$total_requests)]       <- 0
+df_dados$incidentes_seguranca[is.na(df_dados$incidentes_seguranca)] <- 0
+
+# Exportação da Tabela
+write.csv(df_dados, "tabela_analitica_final.csv", row.names = FALSE)
+```
+
+# 4. Análise Exploratória e Indicadores Organizacionais
+
+## 4.1. Tabelas de Estatísticas Descritivas
+
+```{r descritivas, echo=FALSE}
+estatisticas <- data.frame(
+  Indicador = c("Cursos Concluídos", "Total Tokens", "Total Requests", "Incidentes"),
+  Min      = c(min(df_dados$cursos_concluidos), min(df_dados$total_tokens), min(df_dados$total_requests), min(df_dados$incidentes_seguranca)),
+  
+  Media    = c(mean(df_dados$cursos_concluidos), mean(df_dados$total_tokens), mean(df_dados$total_requests), mean(df_dados$incidentes_seguranca)),
+  
+  Max      = c(max(df_dados$cursos_concluidos), max(df_dados$total_tokens), max(df_dados$total_requests), max(df_dados$incidentes_seguranca)),
+  
+  DP       = c(sd(df_dados$cursos_concluidos), sd(df_dados$total_tokens), sd(df_dados$total_requests), sd(df_dados$incidentes_seguranca))
+)
+
+# Arredondamento das casas decimais
+estatisticas$Media <- round(estatisticas$Media, 2)
+estatisticas$DP    <- round(estatisticas$DP, 2)
+
+kable(estatisticas, caption = "Estatísticas Descritivas dos Indicadores Organizacionais")
+```
+
+```{r interp_descritivas, echo=FALSE}
+pct_zero_tokens <- round(100 * mean(df_dados$total_tokens == 0), 1)
+pct_zero_cursos <- round(100 * mean(df_dados$cursos_concluidos == 0), 1)
+mediana_tokens_geral <- round(median(df_dados$total_tokens), 0)
+```
+
+**Interpretação.** Todas as medidas abaixo consideram os N = 2356 colaboradores, **incluindo os zeros** (quem não treinou, não usou IA ou não teve incidente), o que puxa as médias para baixo e deve ser lembrado ao lê-las. Entre os colaboradores, 68.4% não concluíram nenhum curso e 55.1% não registraram nenhum uso de tokens.
+
+-   Cursos concluídos: em média 0.39 cursos por colaborador (DP = 0.63), variando de 0 a 3. É uma contagem pequena, em que a maioria dos colaboradores está concentrada em poucos cursos.
+-   Total de tokens: média de 2700730.06 tokens (DP = 5991975.22), com mínimo 0 e máximo 91540959. Como o desvio-padrão supera a média e a mediana geral é 0 (abaixo da média), o consumo é muito heterogêneo e assimétrico à direita: poucos colaboradores concentram grande parte do consumo, e a média sozinha não representa o colaborador típico.
+-   Total de requests: média de 114.4 (DP = 195.78), de 0 a 863. Mede a frequência de uso, enquanto os tokens medem o volume.
+-   Incidentes: média de 0.03 por colaborador (DP = 0.17), máximo de 2. Como a média é próxima de zero e o máximo é bem maior, trata-se de um evento raro e concentrado em poucos colaboradores.
+
+Essas medidas **descrevem** a amostra, mas não comparam grupos nem validam nenhuma hipótese; isso é feito com testes na seção 4.5.
+
+## 4.2. Distribuição do Consumo de Tokens
+
+```{r histograma, echo=FALSE}
+df_grafico <- subset(df_dados, total_tokens > 0)
+
+# Número de faixas pela regra de Sturges (k = 1 + log2(n)), em vez de 40 faixas arbitrárias
+n_faixas <- nclass.Sturges(df_grafico$total_tokens)
+
+ggplot(df_grafico, aes(x = total_tokens)) +
+  geom_histogram(fill = "royalblue3", color = "white", bins = n_faixas) +
+  labs(
+    title = "Distribuição do Consumo de Tokens de IA",
+    x = "Quantidade de Tokens",
+    y = "Frequência (Colaboradores)"
+  )
+```
+
+**Escolha do número de faixas e dos dados.** Com 40 faixas, o histograma ficava fragmentado, com muitas barras baixas e irregulares que refletiam ruído amostral em vez da forma da distribuição. Adotou-se a regra de Sturges (k = 1 + log2 n), que resulta em 12 faixas para os n = 1058 colaboradores com uso, o que permite enxergar o formato geral. Os 1298 colaboradores com total_tokens = 0 (sem nenhum uso de IA) foram retirados **somente deste gráfico**: eles formariam uma barra isolada em zero, que esconde a distribuição de quem realmente usa as ferramentas. Eles continuam nas tabelas e na matriz de correlação.
+
+**Interpretação.** Entre os colaboradores que usam IA, a média (6014102) é maior que a mediana (2371620), o que indica uma distribuição assimétrica à direita: a maior parte dos colaboradores consome volumes baixos ou moderados de tokens e uma minoria de usuários intensivos forma a cauda longa à direita. Por isso a escala log10 é usada nos boxplots da seção 4.4, e por isso métodos que não assumem normalidade (testes de postos) são os mais adequados para comparar grupos.
+
+## 4.3. Mapa de Correlação dos Indicadores
+
+Para investigar se o aumento em um indicador organizacional afeta o outro, utilizamos a matriz de correlação linear construída nativamente com o pacote ggplot2.
+
+```{r correlacao, echo=FALSE}
+# Variáveis quant
+dados_correl <- df_dados[, c("cursos_concluidos", "total_tokens", "total_requests", "incidentes_seguranca")]
+
+matriz_correl <- cor(dados_correl)
+
+# Formato longo ggplot2
+correl_df <- as.data.frame(matriz_correl)
+correl_df$Variavel_1 <- rownames(correl_df)
+
+correl_longa <- pivot_longer(
+  correl_df, 
+  cols = c("cursos_concluidos", "total_tokens", "total_requests", "incidentes_seguranca"), 
+  names_to = "Variavel_2", values_to = "Valor"
+)
+
+# 4. Construção do Heatmap de Correlação
+ggplot(correl_longa, aes(x = Variavel_1, y = Variavel_2, fill = Valor)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = round(Valor, 2)), color = "black", size = 4) +
+  scale_fill_gradient2(low = "darkred", mid = "white", high = "cyan3", midpoint = 0, limit = c(-1, 1), name = "Correlação"
+  ) +
+  theme(axis.text.x = element_text(angle = 15, hjust = 1), axis.title = element_blank(), panel.grid = element_blank()) +
+  labs(title = "Heatmap de Correlação Linear") +
+  coord_fixed()
+```
+
+```{r interp_heatmap, echo=FALSE}
+r_cur_tok <- round(matriz_correl["cursos_concluidos", "total_tokens"], 2)
+r_cur_req <- round(matriz_correl["cursos_concluidos", "total_requests"], 2)
+r_cur_inc <- round(matriz_correl["cursos_concluidos", "incidentes_seguranca"], 2)
+r_tok_req <- round(matriz_correl["total_tokens", "total_requests"], 2)
+r_tok_inc <- round(matriz_correl["total_tokens", "incidentes_seguranca"], 2)
+r_req_inc <- round(matriz_correl["total_requests", "incidentes_seguranca"], 2)
+
+forca <- function(r) {
+  a <- abs(r)
+  ifelse(a < 0.1, "desprezível", ifelse(a < 0.3, "fraca", ifelse(a < 0.7, "moderada", "forte")))
+}
+```
+
+**Interpretação.** O heatmap mostra o coeficiente de correlação linear de Pearson entre cada par de indicadores (a diagonal vale 1 por definição e a matriz é simétrica). Cores mais intensas indicam correlação mais forte, em cyan para positiva e em vermelho para negativa. Os valores observados foram:
+
+-   `total_tokens` e `total_requests`: r = 0.84 (forte). É a relação esperada, pois as duas variáveis vêm das mesmas linhas de `ai_usage_logs` (quem faz mais requisições naturalmente acumula mais tokens), então esse par mede em parte uma relação mecânica, não um achado de negócio.
+-   `cursos_concluidos` e `total_tokens`: r = 0.11 (fraca); com `total_requests`: r = 0.12 (fraca). Esses valores motivam a hipótese H1.
+-   `cursos_concluidos` e `incidentes_seguranca`: r = -0.02 (desprezível). Este é o par que motiva H2.
+-   `incidentes_seguranca` com `total_tokens` (r = 0.02, desprezível) e com `total_requests` (r = 0.01, desprezível).
+
+Duas ressalvas: (i) correlação mede associação linear e **não implica causalidade**; (ii) o coeficiente de Pearson é sensível a valores extremos e as variáveis são contagens assimétricas com muitos zeros, portanto os valores devem ser lidos como indicativos. O heatmap apenas sugere hipóteses; ele não é um teste de significância.
+
+## 4.4. Boxplots: Testando as Hipóteses de Treinamento
+
+A matriz de correlação sugere duas hipóteses de negócio a serem exploradas visualmente: (H1) colaboradores que concluíram treinamentos em IA consomem mais tokens e (H2) colaboradores treinados apresentam menos incidentes de segurança (efeito do treinamento pra proteção). Para investigar essas hipóteses, os colaboradores foram segmentados em dois grupos.
+
+**Atenção:** medidas-resumo, médias e boxplots são ferramentas **exploratórias**: mostram se os grupos parecem diferentes, mas não dizem se a diferença observada pode ser atribuída ao acaso da amostra. Por isso, cada hipótese é formalizada e submetida a um **teste de hipóteses** (seção 4.5), e só ele sustenta a conclusão. As hipóteses estatísticas, com nível de significância de 5%, são:
+
+-   **H1:** H0: o consumo de tokens dos colaboradores treinados é igual ao dos não treinados versus Ha: o consumo dos treinados é maior.
+-   **H2:** H0: o número de incidentes dos colaboradores treinados é igual ao dos não treinados versus Ha: o número de incidentes dos treinados é menor.
+
+```{r hipoteses_setup, echo=FALSE}
+df_dados$treinado <- ifelse(df_dados$cursos_concluidos > 0, "Com Treinamento", "Sem Treinamento")
+```
+
+```{r boxplot_tokens_treinamento, echo=FALSE}
+df_tokens_pos <- subset(df_dados, total_tokens > 0)
+
+ggplot(df_tokens_pos, aes(x = treinado, y = total_tokens, fill = treinado)) + geom_boxplot(outlier.alpha = 0.3) + scale_y_log10() + scale_fill_manual(values = c("Com Treinamento" = "cyan3", "Sem Treinamento" = "gray1")) +
+  labs(title = "H1: Colaboradores treinados consomem mais tokens de IA?", x = NULL, y = "Total de Tokens (escala log10, apenas colaboradores ativos no uso)"
+  )
+```
+
+```{r interp_boxplot_h1, echo=FALSE}
+tok_com <- df_tokens_pos$total_tokens[df_tokens_pos$treinado == "Com Treinamento"]
+tok_sem <- df_tokens_pos$total_tokens[df_tokens_pos$treinado == "Sem Treinamento"]
+q_com <- quantile(tok_com, c(0.25, 0.5, 0.75))
+q_sem <- quantile(tok_sem, c(0.25, 0.5, 0.75))
+caixas_sobrepoem <- max(q_com[1], q_sem[1]) < min(q_com[3], q_sem[3])
+```
+
+**Interpretação do boxplot (H1).** Em cada grupo, a linha central é a mediana, a caixa cobre o intervalo interquartil (Q1 a Q3, os 50% centrais) e os pontos são valores atípicos. O eixo está em escala log10, então a distância visual entre as caixas representa razão entre valores, e não diferença absoluta. Apenas colaboradores com uso de IA foram incluídos (n = 409 com treinamento e n = 649 sem treinamento). A mediana de tokens é 2876058 para os treinados e 2114798 para os não treinados, e as caixas se sobrepõem em boa parte, ou seja, há muitos colaboradores dos dois grupos com consumo semelhante, e a diferença entre as medianas, se existir, é modesta frente à variação dentro de cada grupo. **O boxplot só sugere a direção da diferença; se ela é estatisticamente significativa é respondido pelo teste da seção 4.5.**
+
+```{r incidentes_treinamento, echo=FALSE, fig.width=10, fig.height=6}
+
+ggplot(df_dados, aes(x = treinado, y = incidentes_seguranca, color = treinado)) +
+  geom_jitter(width = 0.12, height = 0, size = 3, alpha = 0.6) +
+  stat_summary(fun = mean, geom = "point", shape = 18, size = 5, color = "black") + scale_color_manual(values = c("Com Treinamento" = "darkred","Sem Treinamento" = "orange2")) + labs(title = "H2: Treinamento em IA reduz incidentes de segurança?", x = NULL, y = "Incidentes de Segurança por Colaborador") + theme_minimal() + theme(legend.position = "none",plot.title = element_text(size = 14, face = "bold")
+        )
+
+```
+
+**Interpretação do gráfico (H2).** Como `incidentes_seguranca` é uma contagem com muitos zeros (a maioria dos colaboradores não teve incidente), um boxplot ficaria degenerado (caixa e mediana colados em zero). Por isso cada ponto é um colaborador (com leve dispersão horizontal para evitar sobreposição) e o losango preto é a média do grupo. Observa-se que os pontos se concentram em zero nos dois grupos e que os losangos ficam em alturas muito próximas, ou seja, o gráfico não mostra diferença visível entre treinados e não treinados. Novamente, isso é apenas exploratório: a conclusão depende do teste da seção 4.5.
+
+## 4.5. Testes de Hipóteses
+
+Como `total_tokens` é assimétrico e `incidentes_seguranca` é uma contagem com excesso de zeros, a suposição de normalidade não é razoável. Por isso, além do teste t de Welch aplicado ao log10 dos tokens (que reduz a assimetria), usa-se o teste não paramétrico de Wilcoxon-Mann-Whitney, que compara as distribuições sem exigir normalidade. Para H2 acrescenta-se o teste exato de Fisher sobre a proporção de colaboradores com pelo menos um incidente. Todos os testes são unilaterais, conforme a direção definida em cada hipótese, com α = 0,05.
+
+```{r testes_hipoteses, echo=FALSE}
+alfa <- 0.05
+
+# H1: tokens (apenas colaboradores com uso, mesma base do boxplot)
+t_h1 <- t.test(log10(tok_com), log10(tok_sem), alternative = "greater")
+w_h1 <- wilcox.test(tok_com, tok_sem, alternative = "greater", exact = FALSE)
+
+# H2: incidentes (todos os colaboradores)
+inc_com <- df_dados$incidentes_seguranca[df_dados$treinado == "Com Treinamento"]
+inc_sem <- df_dados$incidentes_seguranca[df_dados$treinado == "Sem Treinamento"]
+w_h2 <- wilcox.test(inc_com, inc_sem, alternative = "less", exact = FALSE)
+
+tab_inc <- table(
+  factor(df_dados$treinado, levels = c("Com Treinamento", "Sem Treinamento")),
+  factor(df_dados$incidentes_seguranca > 0, levels = c(TRUE, FALSE), labels = c("Com incidente", "Sem incidente"))
+)
+f_h2 <- fisher.test(tab_inc, alternative = "less")
+
+tabela_testes <- data.frame(
+  Hipotese = c("H1", "H1", "H2", "H2"),
+  Teste = c("Teste t de Welch (log10 dos tokens)",
+            "Wilcoxon-Mann-Whitney (tokens)",
+            "Wilcoxon-Mann-Whitney (incidentes)",
+            "Exato de Fisher (proporção com incidente)"),
+  Alternativa = c("Treinados > Não treinados", "Treinados > Não treinados",
+                  "Treinados < Não treinados", "Treinados < Não treinados"),
+  p_valor = c(format.pval(t_h1$p.value, digits = 3, eps = 0.0001),
+              format.pval(w_h1$p.value, digits = 3, eps = 0.0001),
+              format.pval(w_h2$p.value, digits = 3, eps = 0.0001),
+              format.pval(f_h2$p.value, digits = 3, eps = 0.0001)),
+  Decisao = c(ifelse(t_h1$p.value < alfa, "Rejeita H0", "Não rejeita H0"),
+              ifelse(w_h1$p.value < alfa, "Rejeita H0", "Não rejeita H0"),
+              ifelse(w_h2$p.value < alfa, "Rejeita H0", "Não rejeita H0"),
+              ifelse(f_h2$p.value < alfa, "Rejeita H0", "Não rejeita H0"))
+)
+kable(tabela_testes, caption = "Testes de Hipóteses para H1 e H2 (α = 0,05)")
+
+h1_sig <- w_h1$p.value < alfa
+h2_sig <- w_h2$p.value < alfa
+```
+
+**Interpretação dos testes**. Para H1, o teste de Wilcoxon-Mann-Whitney resultou em p \< 0.0001 (e o teste t de Welch em p \< 0.0001), portanto rejeita-se H0 ao nível de 5%: há evidência estatística de que colaboradores treinados consomem mais tokens do que os não treinados. Para H2, o teste de Wilcoxon-Mann-Whitney resultou em p = 0.279 (e o exato de Fisher, para a proporção com incidente, em p = 0.331), portanto não se rejeita H0 ao nível de 5%: não há evidência estatística de que o treinamento reduza incidentes.
+
+Importante lembrar que a significância estatística não é o mesmo que relevância prática, e o tamanho do efeito deve ser lido junto com as medianas e a correlação; a comparação é observacional (treinados e não treinados não foram sorteados), então uma diferença pode refletir outros fatores, como cargo, área e exposição às ferramentas, e não necessariamente o efeito do treinamento.
+
+```{r stats_hipoteses, echo=FALSE}
+media_tokens_com  <- round(mean(df_tokens_pos$total_tokens[df_tokens_pos$treinado == "Com Treinamento"]), 0)
+
+media_tokens_sem  <- round(mean(df_tokens_pos$total_tokens[df_tokens_pos$treinado == "Sem Treinamento"]), 0)
+
+mediana_tokens_com <- round(median(df_tokens_pos$total_tokens[df_tokens_pos$treinado == "Com Treinamento"]), 0)
+
+mediana_tokens_sem <- round(median(df_tokens_pos$total_tokens[df_tokens_pos$treinado == "Sem Treinamento"]), 0)
+
+media_inc_com     <- round(mean(df_dados$incidentes_seguranca[df_dados$treinado == "Com Treinamento"]), 4)
+
+media_inc_sem     <- round(mean(df_dados$incidentes_seguranca[df_dados$treinado == "Sem Treinamento"]), 4)
+
+cor_cursos_tokens <- round(cor(df_dados$cursos_concluidos, df_dados$total_tokens), 2)
+
+cor_cursos_inc    <- round(cor(df_dados$cursos_concluidos, df_dados$incidentes_seguranca), 2)
+
+pct_com_incidente <- round(100 * sum(df_dados$incidentes_seguranca > 0) / nrow(df_dados), 1)
+
+# Export resumo das hipoteses
+resumo_hipoteses <- data.frame(
+  Hipotese     = c("H1: Treinamento aumenta uso de IA", "H2: Treinamento reduz incidentes"),
+  Correlacao   = c(cor_cursos_tokens, cor_cursos_inc),
+  Media_Com    = c(media_tokens_com, media_inc_com),
+  Media_Sem    = c(media_tokens_sem, media_inc_sem),
+  P_valor      = c(w_h1$p.value, w_h2$p.value),
+  Resultado    = c(ifelse(h1_sig, "Evidencia a favor (p < 0,05)", "Sem evidencia (p >= 0,05)"),
+                   ifelse(h2_sig, "Evidencia a favor (p < 0,05)", "Sem evidencia (p >= 0,05)"))
+)
+write.csv(resumo_hipoteses, "resumo_hipoteses.csv", row.names = FALSE)
+```
+
+# 5. Conclusão
+
+A preparação dos dados juntou de quatro bases transacionais e dimensionais para uma única matriz analítica granularizada por colaborador (N = 2356), com tratamento adequado de nulos estruturais que preservou a integridade das 2356 observações.
+
+Os resultados permitem uma leitura mais precisa das duas hipóteses organizacionais levantadas:
+
+H1 — Treinamento aumenta o uso de IA: há evidência estatística a favor (teste de Wilcoxon-Mann-Whitney unilateral, p \< 0.0001, α = 0,05). Entre os colaboradores com uso de IA, o consumo médio de tokens é 7003698 para os que concluíram ao menos um curso contra 5390459 para os não treinados, e a mediana é 2876058 versus 2114798 tokens. A correlação linear entre cursos concluídos e tokens (r = 0.11) é fraca, de modo que, mesmo havendo diferença estatisticamente significativa, a capacitação explica pouco da variação do consumo, e outros fatores (ex.: função do cargo ou ferramenta disponibilizada) provavelmente também influenciam. As médias, medianas e boxplots, isoladamente, não validam a hipótese; a decisão se apoia no teste.
+
+H2 — Treinamento reduz incidentes de segurança: não há evidência estatística a favor (teste de Wilcoxon-Mann-Whitney unilateral, p = 0.279; teste exato de Fisher para a proporção com incidente, p = 0.331, α = 0,05). As médias por grupo são 0.0255 incidentes/colaborador entre treinados e 0.031 entre não treinados, e a correlação entre cursos concluídos e incidentes é desprezível (r = -0.02). O evento é raro: apenas 2.8% dos colaboradores registraram algum incidente, o que limita o poder dos testes com o volume atual de dados. Conclui-se que, com a granularidade e o período disponíveis, não há evidência de um efeito protetor do treinamento sobre a segurança, e a hipótese não deve ser usada para justificar decisões de política de treinamento sem uma análise multivariada mais robusta (controlando por área, cargo e exposição às ferramentas de IA).
+
+Esse diagnóstico é o principal ganho desta etapa: em vez de apenas declarar que "os dados estão prontos", a análise submete as duas hipóteses de negócio a testes estatísticos formais (e não apenas a medidas-resumo e gráficos) e qualifica a força real de cada uma, orientando os próximos passos — como regressão multivariada com variáveis de controle e uma janela temporal entre treinamento e incidente — em vez de correlações simples.
